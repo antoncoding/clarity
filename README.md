@@ -30,3 +30,4 @@ SITE_URL=http://localhost:3000
 ```
 9. In production, change the SITE_URL accordingly
 10. Make sure you have created account in Supabase, in order to have all the variables needed to run.
+11. Once you are done run ``` npm run dev ``` to run the project locally. 
