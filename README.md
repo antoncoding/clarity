@@ -4,6 +4,8 @@ This is basically an easy to kickoff project with NextJS and Supabase.
 
 ![alt text](https://github.com/adaOctopus/nextjs-auth-supabase/blob/main/signinpage.png)
 
+(Shout out to those guys, that made the UI template -  I did the integration of Supabase and the implementation of the Auth related stuff)
+
 It has:
 1. Login page
 2. Dashboard ready to start editing and kickoff your project
