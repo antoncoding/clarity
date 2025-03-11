@@ -1,6 +1,6 @@
 import { createClient } from "../../../utils/supabase/server";
 import { redirect } from "next/navigation";
-import { ChatInterface } from "@/components/Chat/ChatInterface";
+import { ChatContainer } from "@/components/Chat/ChatContainer";
 
 export default async function Home() {
   const supabase = await createClient()
@@ -12,7 +12,7 @@ export default async function Home() {
 
   return (
     <div className="h-full">
-      <ChatInterface />
+      <ChatContainer />
     </div>
   );
 }

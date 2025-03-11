@@ -10,6 +10,9 @@ import { Authentication } from "./icons";
 import { MenuItem } from "./menu-item";
 import { useSidebarContext } from "./sidebar-context";
 import { createClient } from "@/utils/supabase/client";
+import { ConversationsList } from "./conversations"; 
+import { useRouter } from "next/navigation"; 
+import { useConversation } from "@/context/conversation-context";
 
 // Define the item type to fix TypeScript errors
 type NavItem = {
@@ -17,6 +20,7 @@ type NavItem = {
   icon: React.ComponentType<{ className?: string }>;
   url?: string;
   items: Array<{ title: string; url: string }>;
+  showConversations?: boolean; 
 };
 
 export function Sidebar() {
@@ -24,9 +28,10 @@ export function Sidebar() {
   const { state, setIsOpen, isOpen, isMobile, toggleSidebar } = useSidebarContext();
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const router = useRouter(); 
+  const { selectedConversationId, setSelectedConversationId } = useConversation();
 
   useEffect(() => {
-    // Check if dark mode is enabled
     setIsDarkMode(document.documentElement.classList.contains('dark'));
   }, []);
 
@@ -41,7 +46,6 @@ export function Sidebar() {
     window.location.href = '/auth/sign-in';
   };
 
-  // Handle click on the collapsed sidebar to expand it
   const handleSidebarClick = () => {
     if (!isOpen && !isMobile) {
       toggleSidebar();
@@ -50,7 +54,6 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Mobile Overlay */}
       {isMobile && isOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 transition-opacity duration-300"
@@ -84,7 +87,6 @@ export function Sidebar() {
               </div>
             )}
             
-            {/* Close button for mobile */}
             {isMobile && isOpen && (
               <button
                 onClick={toggleSidebar}
@@ -97,7 +99,6 @@ export function Sidebar() {
               </button>
             )}
             
-            {/* Collapse button for desktop */}
             {!isMobile && isOpen && (
               <button
                 onClick={toggleSidebar}
@@ -111,7 +112,6 @@ export function Sidebar() {
             )}
           </div>
 
-          {/* Navigation */}
           <div className="custom-scrollbar mt-6 flex-1 overflow-y-auto pr-2">
             {NAV_DATA.map((section) => (
               <div key={section.label} className="mb-4">
@@ -130,7 +130,7 @@ export function Sidebar() {
                         <li key={item.title}>
                           <MenuItem
                             className={cn(
-                              "flex items-center gap-3 py-2",
+                              "flex items-center gap-3 py-3 text-sm",
                               !isOpen && "justify-center px-0"
                             )}
                             as="link"
@@ -144,6 +144,16 @@ export function Sidebar() {
 
                             {isOpen && <span className="text-sm">{item.title}</span>}
                           </MenuItem>
+                          
+                          {isOpen && item.showConversations && (
+                            <ConversationsList 
+                              isExpanded={isOpen}
+                              selectedConversationId={selectedConversationId}
+                              onSelectConversation={(id: string | null) => {
+                                setSelectedConversationId(id);
+                              }}
+                            />
+                          )}
                         </li>
                       );
                     })}
@@ -153,9 +163,7 @@ export function Sidebar() {
             ))}
           </div>
           
-          {/* Settings and Logout at bottom */}
           <div className="mt-auto border-t border-gray-200 pt-3 dark:border-gray-800">
-            {/* Theme toggle */}
             <button 
               className={cn(
                 "mb-2 flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm hover:bg-primary-50 dark:hover:bg-primary-900/30",
@@ -175,7 +183,6 @@ export function Sidebar() {
               {isOpen && <span className="text-gray-700 dark:text-gray-300">{isDarkMode ? "Light Mode" : "Dark Mode"}</span>}
             </button>
             
-            {/* Logout button */}
             <button 
               className={cn(
                 "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-accent-600 hover:bg-accent-50 dark:text-accent-300 dark:hover:bg-accent-900/30",

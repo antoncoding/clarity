@@ -26,22 +26,87 @@ interface RealtimePayload {
   };
 }
 
-export function ChatInterface() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      content: "Hello! I'm your news agent. How can I help you today?",
-      sender: "agent",
-      status: "completed",
-      timestamp: new Date(),
-    },
-  ]);
+export function ChatInterface({ initialConversationId = null }: { initialConversationId?: string | null }) {
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(initialConversationId);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [conversationTitle, setConversationTitle] = useState<string>("New Chat");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const supabase = createClient();
+
+  // Watch for changes to initialConversationId prop
+  useEffect(() => {
+    if (initialConversationId !== conversationId) {
+      // Clear messages when switching conversations
+      setMessages([]);
+      setConversationId(initialConversationId);
+    }
+  }, [initialConversationId]);
+
+  // Load existing messages when conversation ID changes
+  useEffect(() => {
+    const loadConversationMessages = async () => {
+      if (!conversationId) {
+        // Reset everything for a new conversation
+        setConversationTitle("New Chat");
+        setMessages([]); 
+        setIsLoadingHistory(false);
+        return;
+      }
+      
+      try {
+        setIsLoadingHistory(true);
+        
+        // Fetch conversation details to get the title
+        const { data: conversationData, error: conversationError } = await supabase
+          .from("conversations")
+          .select("*")
+          .eq("id", conversationId)
+          .single();
+          
+        if (conversationData && !conversationError) {
+          setConversationTitle(conversationData.title);
+        }
+        
+        // Fetch messages for this conversation
+        const { data, error } = await supabase
+          .from("messages")
+          .select("*")
+          .eq("conversation_id", conversationId)
+          .order("created_at", { ascending: true });
+          
+        if (error) {
+          console.error("Error loading conversation messages:", error);
+          return;
+        }
+        
+        if (data && data.length > 0) {
+          // Convert database messages to our Message format
+          const loadedMessages = data.map((msg) => ({
+            id: msg.id,
+            content: msg.content,
+            sender: msg.sender,
+            status: msg.status,
+            timestamp: new Date(msg.created_at),
+          }));
+          
+          setMessages(loadedMessages);
+          console.log(`Loaded ${loadedMessages.length} messages for conversation ${conversationId}`);
+        } else {
+          console.log(`No messages found for conversation ${conversationId}`);
+        }
+      } catch (err) {
+        console.error("Error in loadConversationMessages:", err);
+      } finally {
+        setIsLoadingHistory(false);
+      }
+    };
+    
+    loadConversationMessages();
+  }, [conversationId, supabase]);
 
   // Set up real-time subscription to messages
   useEffect(() => {
@@ -78,16 +143,39 @@ export function ChatInterface() {
       }, (payload: any) => {
         console.log('Message updated:', payload);
         const updatedMessage = payload.new;
+        
+        // If the status changed from processing to completed, log it
+        if (updatedMessage.status === "completed") {
+          console.log("✅ Agent response completed for message:", updatedMessage.id);
+        }
+        
         setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === updatedMessage.id
-              ? {
-                  ...msg,
-                  content: updatedMessage.content,
-                  status: updatedMessage.status,
-                }
-              : msg
-          )
+          prev.map((msg) => {
+            // Match by ID for existing database messages
+            if (msg.id === updatedMessage.id) {
+              console.log(`Updating message with id ${msg.id}`, updatedMessage);
+              return {
+                ...msg,
+                content: updatedMessage.content,
+                status: updatedMessage.status,
+              };
+            }
+            
+            // For temporary processing messages, identify and replace when agent messages come in
+            if (msg.status === "processing" && msg.sender === "agent" && 
+                updatedMessage.sender === "agent" && updatedMessage.status === "completed") {
+              console.log(`Replacing processing message with completed agent message: ${updatedMessage.id}`);
+              return {
+                id: updatedMessage.id,
+                content: updatedMessage.content,
+                sender: updatedMessage.sender,
+                status: updatedMessage.status,
+                timestamp: new Date(updatedMessage.created_at),
+              };
+            }
+            
+            return msg;
+          })
         );
       })
       .subscribe();
@@ -151,14 +239,31 @@ export function ChatInterface() {
       }
       
       const data = await response.json();
+      console.log("📊 API response data:", data);
       
       // Update conversation ID if this is a new conversation
       if (data.conversationId && !conversationId) {
         setConversationId(data.conversationId);
+        console.log(`🆕 Set conversation ID: ${data.conversationId}`);
       }
       
       // The real-time subscription will handle updating the messages
-      
+      // Map temporary IDs to actual DB IDs for easier replacement
+      if (data.messageId && data.agentMessageId) {
+        console.log(`🔄 Message ID mapping: ${tempUserMessageId} -> ${data.messageId}`);
+        console.log(`🔄 Agent Message ID mapping: ${tempAgentMessageId} -> ${data.agentMessageId}`);
+        
+        // Update the user message ID to match the database ID
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === tempUserMessageId
+              ? { ...msg, id: data.messageId }
+              : msg.id === tempAgentMessageId
+              ? { ...msg, id: data.agentMessageId }
+              : msg
+          )
+        );
+      }
     } catch (error) {
       console.error("Error sending message:", error);
       
@@ -186,7 +291,8 @@ export function ChatInterface() {
 
   // Function to render message content with markdown support
   const renderMessageContent = (content: string) => {
-    if (content.includes('##') || content.includes('[')) {
+    // Check if the message is from the agent and needs markdown formatting
+    if (content) {
       return (
         <div className="prose prose-sm dark:prose-invert max-w-none">
           <ReactMarkdown>
@@ -202,8 +308,12 @@ export function ChatInterface() {
     <div className="flex flex-col h-full bg-white dark:bg-gray-dark rounded-md shadow-sm">
       {/* Chat header */}
       <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
-        <h2 className="text-base font-bold text-primary-700 dark:text-primary-300">News Agent Chat</h2>
-        <p className="text-xs text-gray-500 dark:text-gray-400">Ask me about the latest news and events</p>
+        <h2 className="text-base font-bold text-primary-700 dark:text-primary-300">
+          {conversationTitle}
+        </h2>
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          {isLoadingHistory ? "Loading conversation..." : "Ask me about the latest news and events"}
+        </p>
       </div>
       
       {/* Messages container with flex to position content */}
@@ -213,33 +323,53 @@ export function ChatInterface() {
         
         {/* Messages */}
         <div className="space-y-4">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${
-                message.sender === "user" ? "justify-end" : "justify-start"
-              }`}
-            >
-              <div
-                className={`max-w-[85%] rounded-lg px-4 py-2 text-sm ${
-                  message.sender === "user"
-                    ? "bg-primary-500 text-white"
-                    : "bg-primary-100 dark:bg-primary-900 text-primary-900 dark:text-primary-100"
-                }`}
-              >
-                {message.status === "processing" ? (
-                  <div className="flex items-center space-x-2">
-                    <div className="animate-pulse">Processing your request...</div>
-                    <div className="w-2 h-2 bg-primary-300 dark:bg-primary-700 rounded-full animate-bounce delay-75"></div>
-                    <div className="w-2 h-2 bg-primary-300 dark:bg-primary-700 rounded-full animate-bounce delay-150"></div>
-                    <div className="w-2 h-2 bg-primary-300 dark:bg-primary-700 rounded-full animate-bounce delay-300"></div>
-                  </div>
-                ) : (
-                  renderMessageContent(message.content)
-                )}
+          {isLoadingHistory ? (
+            <div className="flex justify-center items-center p-8">
+              <div className="animate-pulse flex flex-col items-center">
+                <div className="w-12 h-12 rounded-full bg-primary-200 dark:bg-primary-700 mb-2"></div>
+                <div className="text-sm text-gray-500 dark:text-gray-400">Loading messages...</div>
               </div>
             </div>
-          ))}
+          ) : messages.length === 0 ? (
+            <div className="flex justify-center items-center p-8">
+              {!conversationId ? (
+                <div className="max-w-[85%] rounded-lg px-4 py-2 text-sm bg-primary-100 dark:bg-primary-900 text-primary-900 dark:text-primary-100">
+                  Hello! I'm your news agent. How can I help you today?
+                </div>
+              ) : (
+                <div className="text-sm text-gray-500 dark:text-gray-400">No messages yet. Start a conversation!</div>
+              )}
+            </div>
+          ) : (
+            messages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex ${
+                  message.sender === "user" ? "justify-end" : "justify-start"
+                }`}
+              >
+                <div
+                  className={`max-w-[85%] rounded-lg px-4 py-2 text-sm ${
+                    message.sender === "user"
+                      ? "bg-primary-500 text-white"
+                      : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  }`}
+                >
+                  {message.status === "processing" ? (
+                    <div className="flex items-center justify-center">
+                      <div className="flex space-x-1">
+                        <div className="w-2 h-2 bg-gray-300 dark:bg-gray-600 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-gray-300 dark:bg-gray-600 rounded-full animate-bounce delay-150"></div>
+                        <div className="w-2 h-2 bg-gray-300 dark:bg-gray-600 rounded-full animate-bounce delay-300"></div>
+                      </div>
+                    </div>
+                  ) : (
+                    renderMessageContent(message.content)
+                  )}
+                </div>
+              </div>
+            ))
+          )}
           <div ref={messagesEndRef} />
         </div>
       </div>

@@ -9,6 +9,7 @@ export const NAV_DATA = [
         icon: Icons.HomeIcon,
         url: "/",
         items: [],
+        showConversations: true, // Add this flag to show conversations under Chat
       },
     ],
   },
