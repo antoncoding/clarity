@@ -2,16 +2,22 @@ import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { MemorySaver } from "@langchain/langgraph";
 import { ChatAnthropic } from "@langchain/anthropic";
 import { TavilySearchResults } from "@langchain/community/tools/tavily_search";
-import { z } from "zod";
-import { BaseMessage } from "@langchain/core/messages";
+import { WikipediaQueryRun } from "@langchain/community/tools/wikipedia_query_run";
+
+
 // Define a news search tool using Tavily
 const searchNewsTavily = new TavilySearchResults({
     maxResults: 3,
     apiKey: process.env.TAVILY_API_KEY,
   });
+
+const searchWikipedia = new WikipediaQueryRun({
+    topKResults: 3,
+    maxDocContentLength: 4000,
+});
   
-  // Create a map of thread IDs to agent instances
-  const agentInstances = new Map();
+// Create a map of thread IDs to agent instances
+const agentInstances = new Map();
   
 
 /**
@@ -28,7 +34,7 @@ export const getAgent = (conversationId: string) => {
     console.log(`🆕 Agent: Creating new agent for conversation ID: ${conversationId}`);
     
     // Define the tools for the agent to use
-    const tools = [searchNewsTavily];
+    const tools = [searchNewsTavily, searchWikipedia];
     console.log(`🧰 Agent: Configured with ${tools.length} tools: ${tools.map(t => t.name).join(', ')}`);
     
     // Initialize the model

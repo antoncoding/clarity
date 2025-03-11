@@ -45,32 +45,29 @@ export function parseAgentMessages(rawMessages: (AIMessage | HumanMessage | Tool
   // Find the index of the last user message
   const userMessageIndex = rawMessages
     .map((msg: any, index: number) => ({ 
-      type: msg.type, 
-      id: msg.id,
+      type: msg instanceof HumanMessage ? 'human' : 'other',
       index 
     }))
-    .filter((msg: any) => msg.type === 'constructor' && msg.id.includes('HumanMessage'))
-    .pop()?.index || 0;
+    .filter((msg: any) => msg.type === 'human')
+    .pop()?.index || -1;
 
   // Extract only messages that came after the last user message
   const relevantMessages = rawMessages.slice(userMessageIndex + 1);
 
-  for (const msg of relevantMessages) {
-    console.log('relevant message', typeof msg, msg)
-  }
+  // Find the last AI message that doesn't have tool calls
+  const aiMessages = relevantMessages.filter(msg => msg instanceof AIMessage);
+  const lastAiMessageIndex = aiMessages.length - 1;
   
   // Categorize messages
   return relevantMessages
-    .map((msg: any) => {
-      // Skip any non-constructor messages or human messages
+    .map((msg: any, index: number) => {
+      // Skip any human messages
       if (msg instanceof HumanMessage) {
-
         return null;
       }
       
       // Handle AI messages
       if (msg instanceof AIMessage) {
-        console.log('AI message', msg)
         // Get the content, handling both string and array formats
         const content = extractMessageContent(msg.content);
         
@@ -79,9 +76,8 @@ export function parseAgentMessages(rawMessages: (AIMessage | HumanMessage | Tool
           return null;
         }
         
-        // The last message is the final response
-        const isLastMessage = relevantMessages.indexOf(msg) === relevantMessages.length - 1;
         const hasToolCalls = msg.tool_calls?.length ?? 0 > 0;
+        const isLastAiMessage = aiMessages.indexOf(msg) === lastAiMessageIndex;
         
         // If it has tool calls, it's a tool call message
         if (hasToolCalls) {
@@ -95,9 +91,8 @@ export function parseAgentMessages(rawMessages: (AIMessage | HumanMessage | Tool
           };
         }
         
-        // If it's the last message, it's the final response
-        if (isLastMessage) {
-          console.log('last message', msg)
+        // If it's the last AI message without tool calls, it's the final response
+        if (isLastAiMessage && !hasToolCalls) {
           return {
             type: 'message' as const,
             content: extractMessageContent(msg.content),
@@ -108,8 +103,6 @@ export function parseAgentMessages(rawMessages: (AIMessage | HumanMessage | Tool
         }
         
         // Otherwise it's a thought
-        console.log('thought', msg)
-
         return {
           type: 'thought' as const,
           content: extractMessageContent(msg.content),
@@ -120,13 +113,13 @@ export function parseAgentMessages(rawMessages: (AIMessage | HumanMessage | Tool
       }
       
       // Tool messages contain tool results
-      if (msg.id.includes('ToolMessage')) {
+      if (msg instanceof ToolMessage) {
         return {
           type: 'tool_result' as const,
-          content: msg.kwargs.content,
+          content: msg.content as string,
           metadata: {
-            tool_call_id: msg.kwargs.tool_call_id,
-            name: msg.kwargs.name
+            tool_call_id: msg.tool_call_id,
+            name: msg.name
           }
         };
       }

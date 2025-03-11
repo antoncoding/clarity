@@ -26,6 +26,15 @@ export function NewMessageInterface({ onSendMessage }: NewMessageInterfaceProps)
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // If Enter is pressed without Shift, submit the form
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault(); // Prevent default behavior (new line)
+      handleSubmit(e as unknown as React.FormEvent);
+    }
+    // Shift+Enter will still create a new line (default behavior)
+  };
+
   const sendSuggestion = (suggestion: string) => {
     if (!isLoading) {
       setInputValue(suggestion);
@@ -50,7 +59,8 @@ export function NewMessageInterface({ onSendMessage }: NewMessageInterfaceProps)
             <textarea
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Type your message here..."
+              onKeyDown={handleKeyDown}
+              placeholder="Type your message here... (Press Enter to send, Shift+Enter for new line)"
               className="w-full px-4 py-3 h-24 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-800 dark:text-white resize-none"
               disabled={isLoading}
             />

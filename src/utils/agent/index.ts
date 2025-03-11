@@ -91,7 +91,6 @@ export const processMessage = async (
     const finalHistory = [{ role: "system", content: newsPrompt }, ...formattedHistory];
 
     console.log(`📚 Agent: Including ${finalHistory.length} messages in final history`);
-    console.log('Final history:', JSON.stringify(finalHistory, null, 2));
 
     
     // Invoke with the complete message history

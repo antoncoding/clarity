@@ -133,14 +133,12 @@ async function processAgentMessage(
     console.log(`✅ Agent received response of length: ${response.length}`);
     console.log(`📊 Agent generated ${messages.length} total messages`);
 
-    // Insert all intermediate messages (thoughts and tool operations)
-    const intermediateMessages = messages.filter((m: any) => m.type !== "message");
-    
-    if (intermediateMessages.length > 0) {
-      console.log(`🧠 Inserting ${intermediateMessages.length} intermediate messages`);
+    // Store ALL messages from the agent (thoughts, tool operations, and final messages)
+    if (messages.length > 0) {
+      console.log(`🧠 Inserting ${messages.length} messages & thoughts`);
       
       // Prepare the messages for insertion
-      const messagesToInsert = intermediateMessages.map((m: any) => ({
+      const messagesToInsert = messages.map((m: any) => ({
         conversation_id: conversationId,
         content: m.content,
         sender: "agent",
@@ -149,13 +147,13 @@ async function processAgentMessage(
         metadata: m.metadata || {}
       }));
       
-      // Insert all intermediate messages
+      // Insert all messages
       const { error: insertError } = await adminClient
         .from("messages")
         .insert(messagesToInsert);
         
       if (insertError) {
-        console.error("❌ Error inserting intermediate messages:", insertError);
+        console.error("❌ Error inserting agent messages:", insertError);
         // Don't throw here - we've already updated the main message
       }
     }

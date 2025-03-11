@@ -98,6 +98,11 @@ export function ChatInterface() {
           return prev;
         }
         
+        // If we receive any completed message from the agent, we can clear the thinking status
+        if (newMessage.sender === 'agent' && newMessage.status === 'completed') {
+          setIsAgentProcessing(false);
+        }
+        
         // Otherwise just add the new message
         return [
           ...prev,
@@ -256,13 +261,17 @@ export function ChatInterface() {
                       : "bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white"
                   }`}
                 >
-                  {message.status === "processing" ? (
+                  {message.status === "processing" && isAgentProcessing ? (
                     <div className="flex items-center">
                       <BounceLoader color="#888888" size={24} />
                       <span className="ml-2">Thinking...</span>
                     </div>
                   ) : (
-                    <div className="prose dark:prose-invert max-w-none font-light">
+                    <div className={`prose dark:prose-invert max-w-none ${
+                      message.sender === "agent" && (message.message_type === "tool_call" || message.message_type === "tool_result")
+                        ? "text-gray-500 dark:text-gray-400 text-sm font-light italic"
+                        : "font-light"
+                    }`}>
                       <ReactMarkdown
                         components={{
                           // Replace strong (bold) with a lighter version
