@@ -32,7 +32,7 @@ export function Modal({
     <Fragment>
       {/* Modal Backdrop */}
       <div 
-        className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center"
+        className="fixed inset-0 z-[1000] bg-black/50 backdrop-blur-sm flex items-center justify-center"
         onClick={handleBackdropClick}
       >
         {/* Modal Content */}

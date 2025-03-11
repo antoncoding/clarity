@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { v4 as uuidv4 } from 'uuid';
 import ReactMarkdown from "react-markdown";
+import { BounceLoader } from "react-spinners";
 import { useConversation } from "@/context/conversation-context";
 import { 
   Message, 
@@ -12,6 +13,7 @@ import {
   subscribeToConversationMessages,
   sendMessageToApi
 } from "@/utils/db";
+import { ToolHistory } from "./ToolHistory";
 
 // Define the payload type for Supabase real-time updates
 interface PostgresChangesPayload<T> {
@@ -29,6 +31,7 @@ export function ChatInterface() {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [conversationTitle, setConversationTitle] = useState<string>("New Chat");
+  const [isAgentProcessing, setIsAgentProcessing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   // Clear out component state when changing conversations
@@ -38,6 +41,7 @@ export function ChatInterface() {
     setInputValue("");
     setIsLoading(false);
     setIsLoadingHistory(true);
+    setIsAgentProcessing(false);
   }, [selectedConversationId]);
 
   // Load existing messages when conversation ID changes
@@ -94,20 +98,6 @@ export function ChatInterface() {
           return prev;
         }
         
-        // Filter out temporary processing messages from agent if this is an agent message
-        if (newMessage.sender === "agent") {
-          return [
-            ...prev.filter(msg => !(msg.status === "processing" && msg.sender === "agent")),
-            {
-              id: newMessage.id,
-              content: newMessage.content,
-              sender: newMessage.sender as "user" | "agent",
-              status: newMessage.status as "sent" | "processing" | "completed" | "error",
-              timestamp: new Date(newMessage.created_at),
-            }
-          ];
-        }
-        
         // Otherwise just add the new message
         return [
           ...prev,
@@ -117,6 +107,8 @@ export function ChatInterface() {
             sender: newMessage.sender as "user" | "agent",
             status: newMessage.status as "sent" | "processing" | "completed" | "error",
             timestamp: new Date(newMessage.created_at),
+            metadata: newMessage.metadata,
+            message_type: newMessage.message_type
           }
         ];
       });
@@ -128,6 +120,7 @@ export function ChatInterface() {
       // If the status changed from processing to completed, log it
       if (updatedMessage.status === "completed") {
         console.log("✅ Agent response completed for message:", updatedMessage.id);
+        setIsAgentProcessing(false);
       }
       
       setMessages((prev) =>
@@ -139,6 +132,8 @@ export function ChatInterface() {
               ...msg,
               content: updatedMessage.content,
               status: updatedMessage.status as "sent" | "processing" | "completed" | "error",
+              metadata: updatedMessage.metadata,
+              message_type: updatedMessage.message_type
             };
           }
           
@@ -181,23 +176,14 @@ export function ChatInterface() {
         sender: "user",
         status: "sent",
         timestamp: new Date(),
+        message_type: "message"
       };
       
       // Add temp message to UI for immediate feedback (will be replaced by DB version on subscription)
       setMessages((prevMessages) => [...prevMessages, newUserMessage]);
       
       // Add a temporary processing message from the agent
-      const tempAgentId = `temp-${uuidv4()}`;
-      const tempAgentMessage: Message = {
-        id: tempAgentId,
-        content: "Thinking...",
-        sender: "agent",
-        status: "processing",
-        timestamp: new Date(),
-      };
-      
-      // Add agent processing indicator to UI
-      setMessages((prevMessages) => [...prevMessages, tempAgentMessage]);
+      setIsAgentProcessing(true);
       
       // Scroll to bottom
       setTimeout(() => {
@@ -222,6 +208,7 @@ export function ChatInterface() {
           sender: "agent",
           status: "error",
           timestamp: new Date(),
+          message_type: "error"
         },
       ]);
     } finally {
@@ -251,37 +238,85 @@ export function ChatInterface() {
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {isLoadingHistory ? (
           <div className="flex justify-center items-center h-full">
-            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-500"></div>
+            <BounceLoader color="#8A63D2" size={40} />
           </div>
         ) : (
           <>
-            {messages.map((message) => (
+            {messages.map((message, index) => (
               <div 
                 key={message.id}
-                className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
+                className={`flex ${
+                  message.sender === "user" ? "justify-end" : "justify-start"
+                } mb-4`}
               >
-                <div 
-                  className={`max-w-[80%] p-3 rounded-lg ${
+                <div
+                  className={`p-3 rounded-lg max-w-[80%] ${
                     message.sender === "user"
-                      ? "bg-primary-600 text-white"
-                      : "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-white"
+                      ? "bg-primary-500 text-white"
+                      : "bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white"
                   }`}
                 >
                   {message.status === "processing" ? (
-                    <div className="flex items-center space-x-2">
-                      <div className="animate-pulse">⋯</div>
-                      <span>{message.content}</span>
+                    <div className="flex items-center">
+                      <BounceLoader color="#888888" size={24} />
+                      <span className="ml-2">Thinking...</span>
                     </div>
                   ) : (
-                    <div className="prose dark:prose-invert max-w-none">
-                      <ReactMarkdown>
+                    <div className="prose dark:prose-invert max-w-none font-light">
+                      <ReactMarkdown
+                        components={{
+                          // Replace strong (bold) with a lighter version
+                          strong: ({node, ...props}) => <span className="font-medium text-current" {...props} />,
+                          // Replace bullets with dashes
+                          ul: ({node, ...props}) => <ul className="list-none pl-3 space-y-1" {...props} />,
+                          li: ({node, children, ...props}) => <li className="relative pl-4 before:content-['-'] before:absolute before:left-0 before:text-gray-500 before:dark:text-gray-400" {...props}>{children}</li>,
+                          // Add additional styling for better readability with reduced spacing
+                          p: ({node, ...props}) => <p className="my-1 leading-normal" {...props} />,
+                          h1: ({node, ...props}) => <h1 className="text-xl font-normal my-2" {...props} />,
+                          h2: ({node, ...props}) => <h2 className="text-lg font-normal my-1.5" {...props} />,
+                          h3: ({node, ...props}) => <h3 className="text-base font-normal my-1" {...props} />,
+                          a: ({node, ...props}) => <a className="text-blue-500 hover:underline" {...props} />,
+                          // Improved code styling with reduced padding
+                          code: ({node, className, children, ...props}: any) => {
+                            return (
+                              <code 
+                                className="font-mono text-sm bg-transparent px-1 py-0.5 text-primary-700 dark:text-primary-300 font-light"
+                                {...props}
+                              >
+                                {children}
+                              </code>
+                            );
+                          }
+                        }}
+                      >
                         {message.content}
                       </ReactMarkdown>
+                      
+                      {/* Only show ToolHistory for agent messages with metadata */}
+                      {message.sender === "agent" && 
+                       message.metadata && 
+                       message.message_type === "message" && (
+                        <ToolHistory metadata={message.metadata} />
+                      )}
                     </div>
                   )}
                 </div>
               </div>
             ))}
+            {isAgentProcessing && (
+              <div 
+                className="flex justify-start mb-4"
+              >
+                <div
+                  className={`p-3 rounded-lg max-w-[80%] bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white`}
+                >
+                  <div className="flex items-center">
+                    <BounceLoader color="#888888" size={24} />
+                    <span className="ml-2">Thinking...</span>
+                  </div>
+                </div>
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </>
         )}
@@ -304,7 +339,7 @@ export function ChatInterface() {
             disabled={isLoading || !inputValue.trim()}
           >
             {isLoading ? (
-              <div className="animate-spin h-5 w-5 border-2 border-white border-opacity-30 border-t-white rounded-full" />
+              <BounceLoader color="#ffffff" size={24} />
             ) : (
               "Send"
             )}

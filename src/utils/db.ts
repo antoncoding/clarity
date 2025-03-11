@@ -8,17 +8,40 @@ export type Message = {
   sender: "user" | "agent";
   status: "sent" | "processing" | "completed" | "error";
   timestamp: Date;
+  metadata?: {
+    toolUsageHistory?: Array<{
+      tool: string;
+      input: string;
+      output: string;
+      timestamp: string;
+    }>;
+    stepHistory?: Array<{
+      step: string;
+      type: string;
+      output?: string;
+      timestamp: string;
+    }>;
+    executionSummary?: {
+      toolsUsed: number;
+      stepsExecuted: number;
+      executionTime: string;
+    }
+  };
+  message_type?: 'message' | 'thought' | 'tool_call' | 'tool_result' | 'error';
 };
 
 // Database message row type
 export type MessageRow = {
   id: string;
-  content: string;
-  sender: "user" | "agent";
-  status: "sent" | "processing" | "completed" | "error";
-  created_at: string;
   conversation_id: string;
+  content: string;
+  sender: 'user' | 'agent';
+  status: 'sent' | 'processing' | 'completed' | 'error';
+  created_at: string;
+  updated_at: string;
   user_id?: string;
+  metadata?: any; // For storing tool usage and execution history
+  message_type?: 'message' | 'thought' | 'tool_call' | 'tool_result' | 'error';
 };
 
 // Conversation type
@@ -64,7 +87,7 @@ export async function createConversation(title?: string): Promise<Conversation> 
 /**
  * Creates a new message in a conversation
  */
-export async function createMessage(conversationId: string, content: string, sender: "user" | "agent", status: "sent" | "processing" | "completed" | "error" = "sent"): Promise<MessageRow> {
+export async function createMessage(conversationId: string, content: string, sender: "user" | "agent", status: "sent" | "processing" | "completed" | "error" = "sent", message_type?: 'message' | 'thought' | 'tool_call' | 'tool_result' | 'error'): Promise<MessageRow> {
   const supabase = createClient();
   
   // Get the current user to include user_id
@@ -82,7 +105,8 @@ export async function createMessage(conversationId: string, content: string, sen
       conversation_id: conversationId,
       content,
       sender,
-      status
+      status,
+      message_type
     }])
     .select()
     .single();
@@ -158,6 +182,8 @@ export async function getConversationMessages(conversationId: string): Promise<M
     sender: msg.sender as "user" | "agent",
     status: msg.status as "sent" | "processing" | "completed" | "error",
     timestamp: new Date(msg.created_at),
+    metadata: msg.metadata,
+    message_type: msg.message_type
   }));
 }
 
@@ -263,9 +289,9 @@ export function subscribeToConversations(
 
 /**
  * Sends a message to the API for processing
- * Does NOT create a message in the database as this is handled by the API
+ * The API handles message creation in the database - do not create messages directly
  */
-export async function sendMessageToApi(messageContent: string, conversationId: string): Promise<void> {
+export async function sendMessageToApi(messageContent: string, conversationId: string, message_type?: 'message' | 'thought' | 'tool_call' | 'tool_result' | 'error'): Promise<void> {
   try {
     const response = await fetch("/api/chat", {
       method: "POST",
@@ -273,6 +299,7 @@ export async function sendMessageToApi(messageContent: string, conversationId: s
       body: JSON.stringify({
         message: messageContent,
         conversationId: conversationId,
+        message_type
       }),
       credentials: "include",
     });
@@ -288,18 +315,4 @@ export async function sendMessageToApi(messageContent: string, conversationId: s
     console.error("Error calling chat API:", error);
     throw error;
   }
-}
-
-/**
- * Creates a new conversation with an initial message
- * Note: The message creation is delegated to the API to avoid duplication
- */
-export async function createConversationWithMessage(messageContent: string): Promise<string> {
-  // Create a new conversation
-  const conversation = await createConversation();
-  
-  // Send the message to the API (which will create the message in the database)
-  await sendMessageToApi(messageContent, conversation.id);
-  
-  return conversation.id;
 }

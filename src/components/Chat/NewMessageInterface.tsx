@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { BounceLoader } from "react-spinners";
 
 interface NewMessageInterfaceProps {
   onSendMessage: (message: string) => Promise<void>;
@@ -10,13 +11,11 @@ export function NewMessageInterface({ onSendMessage }: NewMessageInterfaceProps)
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSendMessage = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!inputValue.trim() || isLoading) return;
-    
+
     setIsLoading(true);
-    
     try {
       await onSendMessage(inputValue);
       setInputValue(""); // Clear input after sending
@@ -46,7 +45,7 @@ export function NewMessageInterface({ onSendMessage }: NewMessageInterfaceProps)
           </p>
         </div>
         
-        <form onSubmit={handleSendMessage} className="mb-6">
+        <form onSubmit={handleSubmit} className="w-full mb-6">
           <div className="relative">
             <textarea
               value={inputValue}
@@ -65,7 +64,7 @@ export function NewMessageInterface({ onSendMessage }: NewMessageInterfaceProps)
               disabled={!inputValue.trim() || isLoading}
             >
               {isLoading ? (
-                <span className="inline-block animate-spin">⟳</span>
+                <BounceLoader color="#ffffff" size={24} />
               ) : (
                 "Ask"
               )}

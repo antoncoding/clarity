@@ -10,6 +10,7 @@ import { Modal } from "@/components/ui/Modal";
 import { ConversationItem } from "./conversation-item";
 import { MenuItem } from "./menu-item";
 import { useConversation } from "@/context/conversation-context";
+import { BounceLoader } from "react-spinners";
 
 // Define conversation type
 type Conversation = {
@@ -172,7 +173,7 @@ export function ConversationsList({
   };
 
   if (isLoading && conversations.length === 0) {
-    return <div className="px-2 py-1 text-xs text-gray-500">Loading...</div>;
+    return <div className="px-2 py-1 text-xs text-gray-500"><BounceLoader color="#8A63D2" size={24} /></div>;
   }
 
   return (

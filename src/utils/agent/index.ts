@@ -5,6 +5,10 @@ import { tool } from "@langchain/core/tools";
 import { TavilySearchResults } from "@langchain/community/tools/tavily_search";
 import { z } from "zod";
 import { createClient } from "@/utils/supabase/server";
+import { AGENT_MESSAGES, processAgentResponse } from "./utils";
+
+// Re-export for backward compatibility
+export { AGENT_MESSAGES } from "./utils";
 
 // Define a news search tool using Tavily
 const searchNewsTavily = new TavilySearchResults({
@@ -12,68 +16,27 @@ const searchNewsTavily = new TavilySearchResults({
   apiKey: process.env.TAVILY_API_KEY,
 });
 
-// Define a traditional news search tool as backup
-const searchNews = tool(async ({ query }) => {
-  console.log(`🔍 Tool: search_news - Searching for news about: "${query}"`);
-  
-  // This is a placeholder implementation
-  // In a real application, you would call an actual news API here
-  
-  // Simulate API call delay
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  console.log(`📰 Tool: search_news - Found news results for: "${query}"`);
-  
-  return JSON.stringify({
-    articles: [
-      {
-        title: `Latest news about ${query}`,
-        description: `This is a simulated news article about ${query}.`,
-        source: "News API",
-        url: "https://example.com/news/1",
-        publishedAt: new Date().toISOString()
-      },
-      {
-        title: `More information on ${query}`,
-        description: `Additional details related to ${query} from trusted sources.`,
-        source: "News API",
-        url: "https://example.com/news/2",
-        publishedAt: new Date().toISOString()
-      }
-    ]
-  });
-}, {
-  name: "search_news",
-  description: "Search for recent news articles on a specific topic or query.",
-  schema: z.object({
-    query: z.string().describe("The news topic or keywords to search for."),
-  }),
-});
-
-// Define a summarize tool
-const summarizeArticle = tool(async ({ url, maxLength }) => {
-  console.log(`📝 Tool: summarize_article - Summarizing article at: "${url}" with max length: ${maxLength || 'default'}`);
-  
-  // This is a placeholder implementation
-  // In a real application, you would fetch and summarize the actual article
-  
-  // Simulate processing delay
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  
-  console.log(`✅ Tool: summarize_article - Completed summary for: "${url}"`);
-  
-  return `This is a simulated summary of the article at ${url}. The summary is limited to approximately ${maxLength} words as requested. The article discusses key points related to the topic with insights from experts in the field.`;
-}, {
-  name: "summarize_article",
-  description: "Fetch and summarize a news article from a given URL.",
-  schema: z.object({
-    url: z.string().describe("The URL of the news article to summarize."),
-    maxLength: z.number().optional().describe("Maximum length of the summary in words."),
-  }),
-});
-
 // Create a map of thread IDs to agent instances
 const agentInstances = new Map();
+
+export const newsPrompt = `You are a helpful news assistant. Please provide informative responses about news topics. Today is ${new Date().toLocaleDateString()}. You search for news related to a certain query, and stay objective to only return facts, and focus on how different media report differnet things.`
+
+export type RawMessage = {
+  id: string[] | string,
+  kwargs: {
+    content: string | string[] | Array<{type: string, text?: string, id?: string, name?: string, input?: any}>,
+    additional_kwargs?: any,
+    response_metadata?: any,
+    tool_calls?: Array<{name: string, args?: any, arguments?: string, id: string, type?: string}>,
+    tool_call_id?: string,
+    usage_metadata?: any,
+    name?: string,
+    id?: string,
+    invalid_tool_calls?: Array<string>
+  },
+  lc: number,
+  type: string,
+}
 
 /**
  * Fetch conversation history from the database
@@ -130,8 +93,8 @@ export const getAgent = (conversationId: string) => {
   console.log(`🆕 Agent: Creating new agent for conversation ID: ${conversationId}`);
   
   // Define the tools for the agent to use
-  const tools = [searchNewsTavily, searchNews, summarizeArticle];
-  console.log(`🧰 Agent: Configured with ${tools.length} tools: ${tools.map(t => t.name || t.schema?.name).join(', ')}`);
+  const tools = [searchNewsTavily];
+  console.log(`🧰 Agent: Configured with ${tools.length} tools: ${tools.map(t => t.name).join(', ')}`);
   
   // Initialize the model
   console.log(`🧠 Agent: Initializing Claude 3.5 Sonnet model`);
@@ -172,39 +135,46 @@ export const processMessage = async (
     
     // Get conversation history for context
     const conversationHistory = await getConversationHistory(conversationId);
+    
     const formattedHistory = formatMessagesForAgent(conversationHistory);
     
     console.log(`📚 Agent: Including ${formattedHistory.length} messages from conversation history`);
     
     const agent = getAgent(conversationId);
     
-    // Invoke the agent with the user message and conversation history
-    console.log(`🚀 Agent: Invoking agent with message and history`);
-    
-    // If we're continuing a conversation, use the message directly
-    // Otherwise, include context about being a news assistant
-    const messageWithContext = formattedHistory.length > 0
-      ? message
-      : "You are a helpful news assistant. Please provide informative responses about news topics. " + message;
-    
-    // Add the current message to the history
-    formattedHistory.push({ role: "user", content: messageWithContext });
+    const finalHistory = [{ role: "system", content: newsPrompt }, ...formattedHistory];
+
+    console.log(`📚 Agent: Including ${finalHistory.length} messages in final history`);
+    console.log('Final history:', JSON.stringify(finalHistory, null, 2));
+
     
     // Invoke with the complete message history
     const result = await agent.invoke(
-      { messages: formattedHistory },
+      { messages: finalHistory },
       { configurable: { thread_id: conversationId } }
     );
     
+    // only fetch messages after users' 
+    const messages = result.messages as RawMessage[] 
+
+
     console.log(`✅ Agent: Agent processing complete`);
-    const response = result.messages.at(-1)?.content || "Sorry, I couldn't process your request.";
-    console.log(`📊 Agent: Response length: ${response.length} characters`);
-    console.log(`💬 Agent: Response preview: "${response.substring(0, 50)}${response.length > 50 ? '...' : ''}"`);
+    console.log(`💬 Agent: Agent response:`, JSON.stringify(messages, null, 2));
     
-    // Return the agent's response
-    return response;
+    // Use the utility function to process the agent response
+    const processedResponse = processAgentResponse(messages);
+    console.log(`🔍 Agent: Processed ${processedResponse.messages.length} agent messages`);
+    
+    return processedResponse;
   } catch (error) {
     console.error(`❌ Agent: Error processing message:`, error);
-    return "I encountered an error while processing your request. Please try again.";
+    return {
+      response: AGENT_MESSAGES.ERROR,
+      messages: [{
+        type: 'message',
+        content: AGENT_MESSAGES.ERROR,
+        metadata: { error: error instanceof Error ? error.message : "Unknown error" }
+      }]
+    };
   }
 };

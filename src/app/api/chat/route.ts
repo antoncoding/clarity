@@ -88,43 +88,18 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
 
     console.log(`✅ User message inserted: ${messageData.id}`);
 
-    // Create an agent message in "processing" state using admin client
-    const { data: agentMessageData, error: agentMessageError } = await adminClient
-      .from("messages")
-      .insert([
-        {
-          conversation_id: actualConversationId,
-          content: "Processing your message...",
-          sender: "agent",
-          status: "processing",
-        },
-      ])
-      .select("id")
-      .single();
-
-    if (agentMessageError || !agentMessageData) {
-      console.error("❌ Error inserting agent message:", agentMessageError);
-      return NextResponse.json(
-        { error: "Error sending message" },
-        { status: 500 }
-      );
-    }
-
-    console.log(`✅ Agent processing message inserted: ${agentMessageData.id}`);
 
     // Invoke agent asynchronously
     processAgentMessage(
       userId,
       message,
       messageData.id,
-      agentMessageData.id,
       actualConversationId
     );
 
     return NextResponse.json({
       success: true,
       messageId: messageData.id,
-      agentMessageId: agentMessageData.id,
       conversationId: actualConversationId,
     });
   } catch (error) {
@@ -141,7 +116,6 @@ async function processAgentMessage(
   userId: string,
   userMessage: string,
   userMessageId: string,
-  agentMessageId: string,
   conversationId: string
 ) {
   // Use admin client for updating messages
@@ -151,33 +125,44 @@ async function processAgentMessage(
     console.log(`🤖 Processing agent response for message: ${userMessageId}`);
     
     // Call the agent to process the message using the correct API
-    const agentResponse = await processMessage(conversationId, userMessage);
+    const agentResult = await processMessage(conversationId, userMessage);
+    
+    // Extract the final response and all intermediate messages
+    const { response, messages } = agentResult;
+    
+    console.log(`✅ Agent received response of length: ${response.length}`);
+    console.log(`📊 Agent generated ${messages.length} total messages`);
 
-    // Update the agent message with the response using admin client
-    const { error: updateError } = await adminClient
-      .from("messages")
-      .update({
-        content: agentResponse,
+    // Insert all intermediate messages (thoughts and tool operations)
+    const intermediateMessages = messages.filter((m: any) => m.type !== "message");
+    
+    if (intermediateMessages.length > 0) {
+      console.log(`🧠 Inserting ${intermediateMessages.length} intermediate messages`);
+      
+      // Prepare the messages for insertion
+      const messagesToInsert = intermediateMessages.map((m: any) => ({
+        conversation_id: conversationId,
+        content: m.content,
+        sender: "agent",
         status: "completed",
-      })
-      .eq("id", agentMessageId);
-
-    if (updateError) {
-      console.error("❌ Error updating agent message:", updateError);
-      throw updateError;
+        message_type: m.type,
+        metadata: m.metadata || {}
+      }));
+      
+      // Insert all intermediate messages
+      const { error: insertError } = await adminClient
+        .from("messages")
+        .insert(messagesToInsert);
+        
+      if (insertError) {
+        console.error("❌ Error inserting intermediate messages:", insertError);
+        // Don't throw here - we've already updated the main message
+      }
     }
 
-    console.log(`✅ Agent response completed for message: ${agentMessageId}`);
+    console.log(`✅ Agent response completed for message: ${userMessageId}`);
   } catch (error) {
     console.error("❌ Error in agent processing:", error);
     
-    // Update the message with an error status using admin client
-    await adminClient
-      .from("messages")
-      .update({
-        content: "Sorry, there was an error processing your request.",
-        status: "error",
-      })
-      .eq("id", agentMessageId);
   }
 }

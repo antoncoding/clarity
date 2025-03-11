@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ChatInterface } from "./ChatInterface";
 import { NewMessageInterface } from "./NewMessageInterface";
 import { useConversation } from "@/context/conversation-context";
-import { createConversationWithMessage } from "@/utils/db";
+import { createConversation, sendMessageToApi } from "@/utils/db";
 
 export function ChatContainer() {
   const { selectedConversationId, setSelectedConversationId } = useConversation();
@@ -18,11 +18,14 @@ export function ChatContainer() {
     setIsLoading(true);
     
     try {
-      // Use the utility function to create a conversation with an initial message
-      const newConversationId = await createConversationWithMessage(messageContent);
+      // Create a new conversation
+      const conversation = await createConversation();
       
       // Set the conversation ID to transition to the conversation interface
-      setSelectedConversationId(newConversationId);
+      setSelectedConversationId(conversation.id);
+      
+      // Send the message to the API (which will create the message in the database)
+      await sendMessageToApi(messageContent, conversation.id);
       
       // The agent response will be handled via the real-time subscription in ChatInterface
     } catch (error) {

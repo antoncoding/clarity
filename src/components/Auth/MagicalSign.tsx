@@ -3,9 +3,9 @@ import { EmailIcon } from "@/assets/icons";
 import React, { useState, useActionState } from "react";
 import InputGroup from "../FormElements/InputGroup";
 import { signinWithTheMagicLink } from "../../../utils/supabase/actions";
-import { Spinner } from "@chakra-ui/spinner"
- 
+import { BounceLoader } from "react-spinners"
 
+ 
 export default function MagicalSignin() {
   
   const [email, setUserEmail ] = useState("");
@@ -52,7 +52,7 @@ export default function MagicalSignin() {
           type="submit"
           className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-primary p-4 font-medium text-white transition hover:bg-opacity-90"
         >
-          Sign In with Magic Link 🪄 {isPending && <Spinner size="lg" color="black"/>}
+          Sign In with Magic Link 🪄 {isPending && <BounceLoader color="#ffffff" size={24}/>}
           
         </button>
       </div>

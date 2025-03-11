@@ -4,6 +4,7 @@ import Link from "next/link";
 import React, { useState } from "react";
 import InputGroup from "../FormElements/InputGroup";
 import { Checkbox } from "../FormElements/checkbox";
+import { BounceLoader } from "react-spinners";
 
 export default function SigninWithPassword() {
   const [data, setData] = useState({
@@ -24,7 +25,6 @@ export default function SigninWithPassword() {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    // You can remove this code block
     setLoading(true);
 
     setTimeout(() => {
@@ -86,7 +86,7 @@ export default function SigninWithPassword() {
         >
           Sign In
           {loading && (
-            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-white border-t-transparent dark:border-primary dark:border-t-transparent" />
+            <BounceLoader color="#ffffff" size={24} className="ml-2" />
           )}
         </button>
       </div>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { format } from "date-fns";
+import { BounceLoader } from "react-spinners";
 
 interface Conversation {
   id: string;
@@ -89,7 +90,7 @@ export function ConversationList({
         
         {isLoading ? (
           <div className="p-4 text-center text-gray-500 dark:text-gray-400">
-            Loading conversations...
+            <BounceLoader color="#8A63D2" size={40} className="mx-auto" />
           </div>
         ) : conversations.length === 0 ? (
           <div className="p-4 text-center text-gray-500 dark:text-gray-400">
