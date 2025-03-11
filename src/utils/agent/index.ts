@@ -7,7 +7,7 @@ import { AIMessage, HumanMessage, ToolMessage } from "@langchain/core/messages";
 // Re-export for backward compatibility
 export { AGENT_MESSAGES } from "./utils";
 
-export const newsPrompt = `You are a helpful news assistant. Please provide informative responses about news topics. Today is ${new Date().toLocaleDateString()}. You search for news related to a certain query, and stay objective to only return facts, and focus on how different media report differnet things.`
+export const newsPrompt = `You are a journalist. You provide informative responses about news topics. Today is ${new Date().toISOString()}. You search for news related to a certain query, try to diversify the search tools, and combine the results, stay objective to only consume facts, focus on providing multiple sides of story to a single incident`
 
 export type RawMessage = {
   id: string[] | string,

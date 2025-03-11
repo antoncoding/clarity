@@ -26,8 +26,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const { setIsOpen, isOpen, isMobile, toggleSidebar } = useSidebarContext();
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const { selectedConversationId, setSelectedConversationId } = useConversation();
-
+  
   useEffect(() => {
     setIsDarkMode(document.documentElement.classList.contains('dark'));
   }, []);

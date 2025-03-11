@@ -14,6 +14,7 @@ import {
   sendMessageToApi
 } from "@/utils/db";
 import { ToolHistory } from "./ToolHistory";
+import { ToolResult } from "./ToolResult";
 
 // Define the payload type for Supabase real-time updates
 interface PostgresChangesPayload<T> {
@@ -272,34 +273,41 @@ export function ChatInterface() {
                         ? "text-gray-500 dark:text-gray-400 text-sm font-light italic"
                         : "font-light"
                     }`}>
-                      <ReactMarkdown
-                        components={{
-                          // Replace strong (bold) with a lighter version
-                          strong: ({node, ...props}) => <span className="font-medium text-current" {...props} />,
-                          // Replace bullets with dashes
-                          ul: ({node, ...props}) => <ul className="list-none pl-3 space-y-1" {...props} />,
-                          li: ({node, children, ...props}) => <li className="relative pl-4 before:content-['-'] before:absolute before:left-0 before:text-gray-500 before:dark:text-gray-400" {...props}>{children}</li>,
-                          // Add additional styling for better readability with reduced spacing
-                          p: ({node, ...props}) => <p className="my-1 leading-normal" {...props} />,
-                          h1: ({node, ...props}) => <h1 className="text-xl font-normal my-2" {...props} />,
-                          h2: ({node, ...props}) => <h2 className="text-lg font-normal my-1.5" {...props} />,
-                          h3: ({node, ...props}) => <h3 className="text-base font-normal my-1" {...props} />,
-                          a: ({node, ...props}) => <a className="text-blue-500 hover:underline" {...props} />,
-                          // Improved code styling with reduced padding
-                          code: ({node, className, children, ...props}: any) => {
-                            return (
-                              <code 
-                                className="font-mono text-sm bg-transparent px-1 py-0.5 text-primary-700 dark:text-primary-300 font-light"
-                                {...props}
-                              >
-                                {children}
-                              </code>
-                            );
-                          }
-                        }}
-                      >
-                        {message.content}
-                      </ReactMarkdown>
+                      {message.message_type === "tool_result" ? (
+                        <ToolResult 
+                          content={message.content}
+                          metadata={message.metadata}
+                        />
+                      ) : (
+                        <ReactMarkdown
+                          components={{
+                            // Replace strong (bold) with a lighter version
+                            strong: ({node, ...props}) => <span className="font-medium text-current" {...props} />,
+                            // Replace bullets with dashes
+                            ul: ({node, ...props}) => <ul className="list-none pl-3 space-y-1" {...props} />,
+                            li: ({node, children, ...props}) => <li className="relative pl-4 before:content-['-'] before:absolute before:left-0 before:text-gray-500 before:dark:text-gray-400" {...props}>{children}</li>,
+                            // Add additional styling for better readability with reduced spacing
+                            p: ({node, ...props}) => <p className="my-1 leading-normal" {...props} />,
+                            h1: ({node, ...props}) => <h1 className="text-xl font-normal my-2" {...props} />,
+                            h2: ({node, ...props}) => <h2 className="text-lg font-normal my-1.5" {...props} />,
+                            h3: ({node, ...props}) => <h3 className="text-base font-normal my-1" {...props} />,
+                            a: ({node, ...props}) => <a className="text-blue-500 hover:underline" {...props} />,
+                            // Improved code styling with reduced padding
+                            code: ({node, className, children, ...props}: any) => {
+                              return (
+                                <code 
+                                  className="font-mono text-sm bg-transparent px-1 py-0.5 text-primary-700 dark:text-primary-300 font-light"
+                                  {...props}
+                                >
+                                  {children}
+                                </code>
+                              );
+                            }
+                          }}
+                        >
+                          {message.content}
+                        </ReactMarkdown>
+                      )}
                       
                       {/* Only show ToolHistory for agent messages with metadata */}
                       {message.sender === "agent" && 

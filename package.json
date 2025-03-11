@@ -22,6 +22,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "dayjs": "^1.11.13",
+    "duck-duck-scrape": "^2.2.7",
     "flatpickr": "^4.6.13",
     "jsvectormap": "^1.6.0",
     "next": "15.1.6",

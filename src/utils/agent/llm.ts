@@ -3,7 +3,7 @@ import { MemorySaver } from "@langchain/langgraph";
 import { ChatAnthropic } from "@langchain/anthropic";
 import { TavilySearchResults } from "@langchain/community/tools/tavily_search";
 import { WikipediaQueryRun } from "@langchain/community/tools/wikipedia_query_run";
-
+import { CustomDuckDuckGoSearch } from "../tools/duckduckgo";
 
 // Define a news search tool using Tavily
 const searchNewsTavily = new TavilySearchResults({
@@ -15,6 +15,8 @@ const searchWikipedia = new WikipediaQueryRun({
     topKResults: 3,
     maxDocContentLength: 4000,
 });
+
+const searchDuckDuckGo = new CustomDuckDuckGoSearch({ maxResults: 5 });
   
 // Create a map of thread IDs to agent instances
 const agentInstances = new Map();
@@ -34,7 +36,7 @@ export const getAgent = (conversationId: string) => {
     console.log(`🆕 Agent: Creating new agent for conversation ID: ${conversationId}`);
     
     // Define the tools for the agent to use
-    const tools = [searchNewsTavily, searchWikipedia];
+    const tools = [searchNewsTavily, searchWikipedia, searchDuckDuckGo];
     console.log(`🧰 Agent: Configured with ${tools.length} tools: ${tools.map(t => t.name).join(', ')}`);
     
     // Initialize the model

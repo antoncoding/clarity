@@ -1,5 +1,4 @@
 import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
-import { RawMessage } from './index'
 
 // Types for agent message processing
 export interface AgentMessage {
@@ -60,7 +59,7 @@ export function parseAgentMessages(rawMessages: (AIMessage | HumanMessage | Tool
   
   // Categorize messages
   return relevantMessages
-    .map((msg: any, index: number) => {
+    .map((msg: any) => {
       // Skip any human messages
       if (msg instanceof HumanMessage) {
         return null;

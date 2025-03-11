@@ -17,7 +17,7 @@ export default async function ConversationPage({
 
   return (
     <div className="h-full">
-      <ChatContainer initialConversationId={params.id} />
+      <ChatContainer  />
     </div>
   );
 }

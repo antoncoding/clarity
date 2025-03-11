@@ -35,17 +35,11 @@ export function ChatContainer() {
       setIsLoading(false);
     }
   };
-  
-  // Reset to new message interface
-  const handleStartNewChat = () => {
-    setSelectedConversationId(null);
-  };
-  
   return (
     <div className="h-full">
       {isNewConversation ? (
         // Show the new message UI when no conversation is selected
-        <NewMessageInterface onSendMessage={handleSendNewMessage} />
+        <NewMessageInterface onSendMessage={handleSendNewMessage} isLoading={isLoading}/>
       ) : (
         // Show the conversation UI when a conversation is selected
         <ChatInterface />

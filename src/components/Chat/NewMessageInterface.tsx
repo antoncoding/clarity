@@ -4,6 +4,7 @@ import { useState } from "react";
 import { BounceLoader } from "react-spinners";
 
 interface NewMessageInterfaceProps {
+  isLoading: boolean;
   onSendMessage: (message: string) => Promise<void>;
 }
 
