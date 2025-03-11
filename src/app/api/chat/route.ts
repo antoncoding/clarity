@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { createAdminClient } from "@/utils/supabase/admin";
 import { withAuth } from "@/utils/api-middleware";
 import { getAgent, processMessage } from "@/utils/agent";
 
@@ -19,15 +20,17 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       );
     }
 
-    const supabase = createClient();
+    const supabase = await createClient();
+    // Use admin client for operations that need to bypass RLS
+    const adminClient = createAdminClient();
 
     // Create a new conversation if one doesn't exist
     let actualConversationId = conversationId;
     if (!actualConversationId) {
       console.log("🔄 Creating new conversation");
       
-      // Create a new conversation in the database
-      const { data: newConversation, error: conversationError } = await supabase
+      // Create a new conversation in the database using admin client to bypass RLS
+      const { data: newConversation, error: conversationError } = await adminClient
         .from("conversations")
         .insert([{ user_id: userId, title: message.substring(0, 50) }])
         .select("id")
@@ -61,13 +64,12 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       }
     }
 
-    // Add the message to the database
-    const { data: messageData, error: messageError } = await supabase
+    // Add the message to the database using admin client to bypass RLS
+    const { data: messageData, error: messageError } = await adminClient
       .from("messages")
       .insert([
         {
           conversation_id: actualConversationId,
-          user_id: userId,
           content: message,
           sender: "user",
           status: "sent",
@@ -86,13 +88,12 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
 
     console.log(`✅ User message inserted: ${messageData.id}`);
 
-    // Create an agent message in "processing" state
-    const { data: agentMessageData, error: agentMessageError } = await supabase
+    // Create an agent message in "processing" state using admin client
+    const { data: agentMessageData, error: agentMessageError } = await adminClient
       .from("messages")
       .insert([
         {
           conversation_id: actualConversationId,
-          user_id: userId,
           content: "Processing your message...",
           sender: "agent",
           status: "processing",
@@ -143,7 +144,8 @@ async function processAgentMessage(
   agentMessageId: string,
   conversationId: string
 ) {
-  const supabase = createClient();
+  // Use admin client for updating messages
+  const adminClient = createAdminClient();
 
   try {
     console.log(`🤖 Processing agent response for message: ${userMessageId}`);
@@ -151,8 +153,8 @@ async function processAgentMessage(
     // Call the agent to process the message using the correct API
     const agentResponse = await processMessage(conversationId, userMessage);
 
-    // Update the agent message with the response
-    const { error: updateError } = await supabase
+    // Update the agent message with the response using admin client
+    const { error: updateError } = await adminClient
       .from("messages")
       .update({
         content: agentResponse,
@@ -169,8 +171,8 @@ async function processAgentMessage(
   } catch (error) {
     console.error("❌ Error in agent processing:", error);
     
-    // Update the message with an error status
-    await supabase
+    // Update the message with an error status using admin client
+    await adminClient
       .from("messages")
       .update({
         content: "Sorry, there was an error processing your request.",

@@ -9,7 +9,7 @@ import { NAV_DATA } from "./data";
 import { Authentication } from "./icons";
 import { MenuItem } from "./menu-item";
 import { useSidebarContext } from "./sidebar-context";
-import { createClient } from "../../../../utils/supabase/client";
+import { createClient } from "@/utils/supabase/client";
 
 // Define the item type to fix TypeScript errors
 type NavItem = {

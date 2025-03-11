@@ -12,7 +12,7 @@ export function withAuth(
   return async (req: NextRequest) => {
     try {
       // Create Supabase client - this automatically reads cookies
-      const supabase = createClient();
+      const supabase = await createClient();
       
       // Get the current user from session
       const { data, error } = await supabase.auth.getUser();
