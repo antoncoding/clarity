@@ -1,23 +1,11 @@
-import { createReactAgent } from "@langchain/langgraph/prebuilt";
-import { MemorySaver } from "@langchain/langgraph";
-import { ChatAnthropic } from "@langchain/anthropic";
-import { tool } from "@langchain/core/tools";
-import { TavilySearchResults } from "@langchain/community/tools/tavily_search";
-import { z } from "zod";
 import { createClient } from "@/utils/supabase/server";
 import { AGENT_MESSAGES, processAgentResponse } from "./utils";
+import { getAgent } from "./llm";
+import { AIMessage, HumanMessage, ToolMessage } from "@langchain/core/messages";
+
 
 // Re-export for backward compatibility
 export { AGENT_MESSAGES } from "./utils";
-
-// Define a news search tool using Tavily
-const searchNewsTavily = new TavilySearchResults({
-  maxResults: 3,
-  apiKey: process.env.TAVILY_API_KEY,
-});
-
-// Create a map of thread IDs to agent instances
-const agentInstances = new Map();
 
 export const newsPrompt = `You are a helpful news assistant. Please provide informative responses about news topics. Today is ${new Date().toLocaleDateString()}. You search for news related to a certain query, and stay objective to only return facts, and focus on how different media report differnet things.`
 
@@ -79,48 +67,6 @@ function formatMessagesForAgent(messages: Array<{
   }));
 }
 
-/**
- * Get or create an agent instance for a specific conversation
- */
-export const getAgent = (conversationId: string) => {
-  console.log(`🤖 Agent: Getting agent for conversation ID: ${conversationId}`);
-  
-  if (agentInstances.has(conversationId)) {
-    console.log(`♻️ Agent: Reusing existing agent for conversation ID: ${conversationId}`);
-    return agentInstances.get(conversationId);
-  }
-
-  console.log(`🆕 Agent: Creating new agent for conversation ID: ${conversationId}`);
-  
-  // Define the tools for the agent to use
-  const tools = [searchNewsTavily];
-  console.log(`🧰 Agent: Configured with ${tools.length} tools: ${tools.map(t => t.name).join(', ')}`);
-  
-  // Initialize the model
-  console.log(`🧠 Agent: Initializing Claude 3.5 Sonnet model`);
-  const model = new ChatAnthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY,
-    model: "claude-3-5-sonnet-latest"
-  });
-
-  // Initialize memory to persist state between graph runs
-  console.log(`💾 Agent: Setting up memory saver for conversation persistence`);
-  const checkpointer = new MemorySaver();
-
-  // Create the agent
-  console.log(`🔄 Agent: Creating React agent with LangGraph`);
-  const agent = createReactAgent({
-    llm: model,
-    tools,
-    checkpointSaver: checkpointer,
-  });
-
-  // Store the agent instance
-  agentInstances.set(conversationId, agent);
-  console.log(`✅ Agent: Successfully created and stored agent for conversation ID: ${conversationId}`);
-  
-  return agent;
-};
 
 /**
  * Process a user message with the agent
@@ -155,7 +101,10 @@ export const processMessage = async (
     );
     
     // only fetch messages after users' 
-    const messages = result.messages as RawMessage[] 
+    const messages = result.messages as (HumanMessage | AIMessage | ToolMessage)[] 
+
+    console.log('typeof', typeof messages)
+    console.log('messages', messages.length)
 
 
     console.log(`✅ Agent: Agent processing complete`);
