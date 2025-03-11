@@ -1,6 +1,5 @@
 import Link from "next/link";
 import GoogleSigninButton from "../GoogleSigninButton";
-import AnonymousSignin from "../AnonymousSignin";
 import SigninWithPassword from "../SigninWithPassword";
 import MagicalSignin from "../MagicalSign";
 
@@ -21,21 +20,6 @@ export default function MagicSignin() {
       </div>
 
       <GoogleSigninButton text="Sign in" />
-      <div style={{marginTop: "20px"}}>
-      <AnonymousSignin text="Stay" />
-      </div>
-      
-
-      
-
-      {/* <div className="mt-6 text-center">
-        <p>
-          Don’t have any account?{" "}
-          <Link href="/auth/sign-up" className="text-primary">
-            Sign Up
-          </Link>
-        </p>
-      </div> */}
     </>
   );
 }

@@ -190,24 +190,3 @@ const signInWith = (provider: any) => async () => {
   }
   
   export const signinWithTheGoogle = signInWith('google')
-
-export const signInAnonymously =  async () => {
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.signInAnonymously();
-
-  if (error) {
-    console.log(error)
-    return {
-      success: null,
-      error: error.message,
-    }
-  } else if (data?.user) {
-    redirect("/");
-    return {
-      success: 'Please check your email',
-      error: null,
-    }
-  }
-
-
-};
