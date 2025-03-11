@@ -11,6 +11,7 @@
   "dependencies": {
     "@chakra-ui/spinner": "^2.1.0",
     "@langchain/anthropic": "^0.3.15",
+    "@langchain/community": "^0.3.34",
     "@langchain/core": "^0.3.42",
     "@langchain/langgraph": "^0.2.54",
     "@supabase/ssr": "^0.5.2",

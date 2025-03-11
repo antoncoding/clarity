@@ -145,10 +145,6 @@ export function Sidebar() {
                           {isOpen && item.showConversations && (
                             <ConversationsList 
                               isExpanded={isOpen}
-                              selectedConversationId={selectedConversationId}
-                              onSelectConversation={(id: string | null) => {
-                                setSelectedConversationId(id);
-                              }}
                             />
                           )}
                         </li>

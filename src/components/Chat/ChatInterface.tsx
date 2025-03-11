@@ -1,18 +1,17 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { createClient } from "@/utils/supabase/client";
 import { v4 as uuidv4 } from 'uuid';
 import ReactMarkdown from "react-markdown";
-
-// Message type for the chat interface
-type Message = {
-  id: string;
-  content: string;
-  sender: "user" | "agent";
-  status: "sent" | "processing" | "completed" | "error";
-  timestamp: Date;
-};
+import { useConversation } from "@/context/conversation-context";
+import { 
+  Message, 
+  MessageRow, 
+  getConversationById, 
+  getConversationMessages, 
+  subscribeToConversationMessages,
+  sendMessageToApi
+} from "@/utils/db";
 
 // Define the payload type for Supabase real-time updates
 interface PostgresChangesPayload<T> {
@@ -21,87 +20,50 @@ interface PostgresChangesPayload<T> {
   old: Partial<T> | null;
 }
 
-interface MessageRow {
-  id: string;
-  content: string;
-  sender: "user" | "agent";
-  status: "sent" | "processing" | "completed" | "error";
-  created_at: string;
-  conversation_id: string;
-}
-
 type RealtimeMessagePayload = PostgresChangesPayload<MessageRow>;
 
-export function ChatInterface({ initialConversationId = null }: { initialConversationId?: string | null }) {
+export function ChatInterface() {
+  const { selectedConversationId, setSelectedConversationId } = useConversation();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [conversationId, setConversationId] = useState<string | null>(initialConversationId);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [conversationTitle, setConversationTitle] = useState<string>("New Chat");
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const supabase = createClient();
-
-  // Watch for changes to initialConversationId prop
+  
+  // Clear out component state when changing conversations
   useEffect(() => {
-    if (initialConversationId !== conversationId) {
-      // Clear messages when switching conversations
-      setMessages([]);
-      setConversationId(initialConversationId);
-    }
-  }, [initialConversationId]);
+    // Reset component state
+    setMessages([]);
+    setInputValue("");
+    setIsLoading(false);
+    setIsLoadingHistory(true);
+  }, [selectedConversationId]);
 
   // Load existing messages when conversation ID changes
   useEffect(() => {
     const loadConversationMessages = async () => {
-      if (!conversationId) {
-        // Reset everything for a new conversation
-        setConversationTitle("New Chat");
-        setMessages([]); 
-        setIsLoadingHistory(false);
+      if (!selectedConversationId) {
         return;
       }
       
       try {
-        setIsLoadingHistory(true);
+        console.log(`Loading messages for conversation: ${selectedConversationId}`);
         
         // Fetch conversation details to get the title
-        const { data: conversationData, error: conversationError } = await supabase
-          .from("conversations")
-          .select("*")
-          .eq("id", conversationId)
-          .single();
-          
-        if (conversationData && !conversationError) {
+        const conversationData = await getConversationById(selectedConversationId);
+        if (conversationData) {
           setConversationTitle(conversationData.title);
         }
         
         // Fetch messages for this conversation
-        const { data, error } = await supabase
-          .from("messages")
-          .select("*")
-          .eq("conversation_id", conversationId)
-          .order("created_at", { ascending: true });
-          
-        if (error) {
-          console.error("Error loading conversation messages:", error);
-          return;
-        }
+        const loadedMessages = await getConversationMessages(selectedConversationId);
         
-        if (data && data.length > 0) {
-          // Convert database messages to our Message format
-          const loadedMessages = data.map((msg) => ({
-            id: msg.id,
-            content: msg.content,
-            sender: msg.sender,
-            status: msg.status,
-            timestamp: new Date(msg.created_at),
-          }));
-          
+        if (loadedMessages.length > 0) {
           setMessages(loadedMessages);
-          console.log(`Loaded ${loadedMessages.length} messages for conversation ${conversationId}`);
+          console.log(`Loaded ${loadedMessages.length} messages for conversation ${selectedConversationId}`);
         } else {
-          console.log(`No messages found for conversation ${conversationId}`);
+          console.log(`No messages found for conversation ${selectedConversationId}`);
         }
       } catch (err) {
         console.error("Error in loadConversationMessages:", err);
@@ -110,316 +72,245 @@ export function ChatInterface({ initialConversationId = null }: { initialConvers
       }
     };
     
-    loadConversationMessages();
-  }, [conversationId, supabase]);
+    if (selectedConversationId) {
+      loadConversationMessages();
+    }
+  }, [selectedConversationId]);
 
   // Set up real-time subscription to messages
   useEffect(() => {
-    if (!conversationId) return;
-
-    // Subscribe to changes in the messages table for this conversation
-    const channel = supabase.channel(`messages:${conversationId}`);
+    if (!selectedConversationId) return;
     
-    channel
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `conversation_id=eq.${conversationId}`,
-        }, 
-        (payload: RealtimeMessagePayload) => {
-          console.log('New message inserted:', payload);
-          const newMessage = payload.new;
-          setMessages((prev) => [
-            ...prev,
+    console.log(`Setting up realtime subscription for conversation: ${selectedConversationId}`);
+    
+    // Set up subscription handlers
+    const handleInsert = (newMessage: MessageRow) => {
+      console.log('New message inserted:', newMessage);
+      
+      // Check if this message already exists in our UI (to avoid duplicates)
+      setMessages((prev) => {
+        // If message with this ID already exists, don't add it again
+        if (prev.some(msg => msg.id === newMessage.id)) {
+          return prev;
+        }
+        
+        // Filter out temporary processing messages from agent if this is an agent message
+        if (newMessage.sender === "agent") {
+          return [
+            ...prev.filter(msg => !(msg.status === "processing" && msg.sender === "agent")),
             {
               id: newMessage.id,
               content: newMessage.content,
-              sender: newMessage.sender,
-              status: newMessage.status,
+              sender: newMessage.sender as "user" | "agent",
+              status: newMessage.status as "sent" | "processing" | "completed" | "error",
               timestamp: new Date(newMessage.created_at),
-            },
-          ]);
+            }
+          ];
         }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'messages',
-          filter: `conversation_id=eq.${conversationId}`,
-        }, 
-        (payload: RealtimeMessagePayload) => {
-          console.log('Message updated:', payload);
-          const updatedMessage = payload.new;
-          
-          // If the status changed from processing to completed, log it
-          if (updatedMessage.status === "completed") {
-            console.log("✅ Agent response completed for message:", updatedMessage.id);
+        
+        // Otherwise just add the new message
+        return [
+          ...prev,
+          {
+            id: newMessage.id,
+            content: newMessage.content,
+            sender: newMessage.sender as "user" | "agent",
+            status: newMessage.status as "sent" | "processing" | "completed" | "error",
+            timestamp: new Date(newMessage.created_at),
+          }
+        ];
+      });
+    };
+    
+    const handleUpdate = (updatedMessage: MessageRow) => {
+      console.log('Message updated:', updatedMessage);
+      
+      // If the status changed from processing to completed, log it
+      if (updatedMessage.status === "completed") {
+        console.log("✅ Agent response completed for message:", updatedMessage.id);
+      }
+      
+      setMessages((prev) =>
+        prev.map((msg) => {
+          // Match by ID for existing database messages
+          if (msg.id === updatedMessage.id) {
+            console.log(`Updating message with id ${msg.id}`, updatedMessage);
+            return {
+              ...msg,
+              content: updatedMessage.content,
+              status: updatedMessage.status as "sent" | "processing" | "completed" | "error",
+            };
           }
           
-          setMessages((prev) =>
-            prev.map((msg) => {
-              // Match by ID for existing database messages
-              if (msg.id === updatedMessage.id) {
-                console.log(`Updating message with id ${msg.id}`, updatedMessage);
-                return {
-                  ...msg,
-                  content: updatedMessage.content,
-                  status: updatedMessage.status,
-                };
-              }
-              
-              // For temporary processing messages, identify and replace when agent messages come in
-              if (msg.status === "processing" && msg.sender === "agent" && 
-                  updatedMessage.sender === "agent" && updatedMessage.status === "completed") {
-                console.log(`Replacing processing message with completed agent message: ${updatedMessage.id}`);
-                return {
-                  id: updatedMessage.id,
-                  content: updatedMessage.content,
-                  sender: updatedMessage.sender,
-                  status: updatedMessage.status,
-                  timestamp: new Date(updatedMessage.created_at),
-                };
-              }
-              
-              return msg;
-            })
-          );
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
+          return msg;
+        })
+      );
     };
-  }, [conversationId, supabase]);
+    
+    // Subscribe to conversation messages
+    const unsubscribe = subscribeToConversationMessages(
+      selectedConversationId,
+      handleInsert,
+      handleUpdate
+    );
+    
+    return () => {
+      unsubscribe();
+    };
+  }, [selectedConversationId]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!inputValue.trim() || isLoading) return;
-    
-    setIsLoading(true);
-    
-    // Add user message to local state immediately for better UX
-    const tempUserMessageId = uuidv4();
-    const userMessage: Message = {
-      id: tempUserMessageId,
-      content: inputValue,
-      sender: "user",
-      status: "sent",
-      timestamp: new Date(),
-    };
-    
-    setMessages((prev) => [...prev, userMessage]);
-    
-    // Add temporary processing message
-    const tempAgentMessageId = uuidv4();
-    const processingMessage: Message = {
-      id: tempAgentMessageId,
-      content: "Processing your request...",
-      sender: "agent",
-      status: "processing",
-      timestamp: new Date(),
-    };
-    
-    setMessages((prev) => [...prev, processingMessage]);
-    setInputValue("");
-    
+    if (!inputValue.trim() || isLoading || !selectedConversationId) return;
+
     try {
-      // Send message to backend API with credentials included
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: userMessage.content,
-          conversationId,
-        }),
-        // Include credentials to send cookies
-        credentials: "include",
-      });
+      setIsLoading(true);
       
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error("🚨 API error:", response.status, errorData);
-        throw new Error(`Failed to send message: ${response.status}`);
-      }
+      // Store message content before clearing input
+      const messageContent = inputValue.trim();
       
-      const data = await response.json();
-      console.log("📊 API response data:", data);
+      // Reset input field
+      setInputValue("");
       
-      // Update conversation ID if this is a new conversation
-      if (data.conversationId && !conversationId) {
-        setConversationId(data.conversationId);
-        console.log(`🆕 Set conversation ID: ${data.conversationId}`);
-      }
+      // Optimistically add the message to the UI
+      const tempMessageId = uuidv4();
+      const newUserMessage: Message = {
+        id: tempMessageId,
+        content: messageContent,
+        sender: "user",
+        status: "sent",
+        timestamp: new Date(),
+      };
       
-      // The real-time subscription will handle updating the messages
-      // Map temporary IDs to actual DB IDs for easier replacement
-      if (data.messageId && data.agentMessageId) {
-        console.log(`🔄 Message ID mapping: ${tempUserMessageId} -> ${data.messageId}`);
-        console.log(`🔄 Agent Message ID mapping: ${tempAgentMessageId} -> ${data.agentMessageId}`);
-        
-        // Update the user message ID to match the database ID
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === tempUserMessageId
-              ? { ...msg, id: data.messageId }
-              : msg.id === tempAgentMessageId
-              ? { ...msg, id: data.agentMessageId }
-              : msg
-          )
-        );
-      }
+      // Add temp message to UI for immediate feedback (will be replaced by DB version on subscription)
+      setMessages((prevMessages) => [...prevMessages, newUserMessage]);
+      
+      // Add a temporary processing message from the agent
+      const tempAgentId = `temp-${uuidv4()}`;
+      const tempAgentMessage: Message = {
+        id: tempAgentId,
+        content: "Thinking...",
+        sender: "agent",
+        status: "processing",
+        timestamp: new Date(),
+      };
+      
+      // Add agent processing indicator to UI
+      setMessages((prevMessages) => [...prevMessages, tempAgentMessage]);
+      
+      // Scroll to bottom
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+      
+      // Send message to API - let the API handle database insertion
+      // No direct database call here - avoiding duplication
+      await sendMessageToApi(messageContent, selectedConversationId);
+      
+      // The actual messages (both user and agent) will be handled via the real-time subscription
     } catch (error) {
       console.error("Error sending message:", error);
+      alert(`Error sending message: ${error instanceof Error ? error.message : String(error)}`);
       
-      // Update the temporary processing message with an error
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === tempAgentMessageId
-            ? {
-                ...msg,
-                content: "Sorry, there was an error processing your request. Please try again.",
-                status: "error",
-              }
-            : msg
-        )
-      );
+      // Add error message to the chat
+      setMessages((prevMessages) => [
+        ...prevMessages.filter((msg) => msg.status !== "processing"), // Remove any processing messages
+        {
+          id: uuidv4(),
+          content: "Sorry, there was an error sending your message. Please try again.",
+          sender: "agent",
+          status: "error",
+          timestamp: new Date(),
+        },
+      ]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Auto-scroll to bottom when messages change
+  // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Function to render message content with markdown support
-  const renderMessageContent = (content: string) => {
-    // Check if the message is from the agent and needs markdown formatting
-    if (content) {
-      return (
-        <div className="prose prose-sm dark:prose-invert max-w-none">
-          <ReactMarkdown>
-            {content}
-          </ReactMarkdown>
-        </div>
-      );
-    }
-    return content;
-  };
-
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-gray-dark rounded-md shadow-sm">
+    <div className="flex flex-col h-full">
       {/* Chat header */}
-      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
-        <h2 className="text-base font-bold text-primary-700 dark:text-primary-300">
-          {conversationTitle}
-        </h2>
-        <p className="text-xs text-gray-500 dark:text-gray-400">
-          {isLoadingHistory ? "Loading conversation..." : "Ask me about the latest news and events"}
-        </p>
+      <div className="border-b border-gray-200 dark:border-gray-800 p-4 flex justify-between items-center">
+        <h2 className="text-lg font-medium">{conversationTitle}</h2>
+        <button 
+          onClick={() => setSelectedConversationId(null)}
+          className="text-sm bg-primary-100 hover:bg-primary-200 text-primary-800 px-3 py-1 rounded"
+        >
+          New Chat
+        </button>
       </div>
       
-      {/* Messages container with flex to position content */}
-      <div className="flex-1 flex flex-col p-4 overflow-y-auto">
-        {/* Empty space to push content down */}
-        <div className="flex-grow min-h-[30vh]"></div>
-        
-        {/* Messages */}
-        <div className="space-y-4">
-          {isLoadingHistory ? (
-            <div className="flex justify-center items-center p-8">
-              <div className="animate-pulse flex flex-col items-center">
-                <div className="w-12 h-12 rounded-full bg-primary-200 dark:bg-primary-700 mb-2"></div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">Loading messages...</div>
-              </div>
-            </div>
-          ) : messages.length === 0 ? (
-            <div className="flex justify-center items-center p-8">
-              {!conversationId ? (
-                <div className="max-w-[85%] rounded-lg px-4 py-2 text-sm bg-primary-100 dark:bg-primary-900 text-primary-900 dark:text-primary-100">
-                  Hello! I'm your news agent. How can I help you today?
-                </div>
-              ) : (
-                <div className="text-sm text-gray-500 dark:text-gray-400">No messages yet. Start a conversation!</div>
-              )}
-            </div>
-          ) : (
-            messages.map((message) => (
-              <div
+      {/* Messages area */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {isLoadingHistory ? (
+          <div className="flex justify-center items-center h-full">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-500"></div>
+          </div>
+        ) : (
+          <>
+            {messages.map((message) => (
+              <div 
                 key={message.id}
-                className={`flex ${
-                  message.sender === "user" ? "justify-end" : "justify-start"
-                }`}
+                className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
               >
-                <div
-                  className={`max-w-[85%] rounded-lg px-4 py-2 text-sm ${
+                <div 
+                  className={`max-w-[80%] p-3 rounded-lg ${
                     message.sender === "user"
-                      ? "bg-primary-500 text-white"
-                      : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                      ? "bg-primary-600 text-white"
+                      : "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-white"
                   }`}
                 >
                   {message.status === "processing" ? (
-                    <div className="flex items-center justify-center">
-                      <div className="flex space-x-1">
-                        <div className="w-2 h-2 bg-gray-300 dark:bg-gray-600 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-gray-300 dark:bg-gray-600 rounded-full animate-bounce delay-150"></div>
-                        <div className="w-2 h-2 bg-gray-300 dark:bg-gray-600 rounded-full animate-bounce delay-300"></div>
-                      </div>
+                    <div className="flex items-center space-x-2">
+                      <div className="animate-pulse">⋯</div>
+                      <span>{message.content}</span>
                     </div>
                   ) : (
-                    renderMessageContent(message.content)
+                    <div className="prose dark:prose-invert max-w-none">
+                      <ReactMarkdown>
+                        {message.content}
+                      </ReactMarkdown>
+                    </div>
                   )}
                 </div>
               </div>
-            ))
-          )}
-          <div ref={messagesEndRef} />
-        </div>
+            ))}
+            <div ref={messagesEndRef} />
+          </>
+        )}
       </div>
       
       {/* Input area */}
-      <form onSubmit={handleSendMessage} className="border-t border-gray-200 dark:border-gray-800 p-4">
-        <div className="flex items-center gap-2">
+      <div className="border-t border-gray-200 dark:border-gray-800 p-4">
+        <form onSubmit={handleSendMessage} className="flex space-x-2">
           <input
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Ask about news..."
+            placeholder="Type your message..."
+            className="flex-1 border border-gray-300 dark:border-gray-700 rounded-md p-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
             disabled={isLoading}
-            className="flex-1 rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 dark:text-white disabled:opacity-70"
           />
           <button
             type="submit"
-            className="rounded-full bg-primary-600 hover:bg-primary-700 p-2 text-white transition-colors disabled:opacity-70 disabled:hover:bg-primary-600"
-            disabled={!inputValue.trim() || isLoading}
+            className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-md"
+            disabled={isLoading || !inputValue.trim()}
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.5}
-              stroke="currentColor"
-              className="w-5 h-5"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"
-              />
-            </svg>
+            {isLoading ? (
+              <div className="animate-spin h-5 w-5 border-2 border-white border-opacity-30 border-t-white rounded-full" />
+            ) : (
+              "Send"
+            )}
           </button>
-        </div>
-      </form>
+        </form>
+      </div>
     </div>
   );
 }

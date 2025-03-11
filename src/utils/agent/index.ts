@@ -2,9 +2,17 @@ import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { MemorySaver } from "@langchain/langgraph";
 import { ChatAnthropic } from "@langchain/anthropic";
 import { tool } from "@langchain/core/tools";
+import { TavilySearchResults } from "@langchain/community/tools/tavily_search";
 import { z } from "zod";
+import { createClient } from "@/utils/supabase/server";
 
-// Define a news search tool
+// Define a news search tool using Tavily
+const searchNewsTavily = new TavilySearchResults({
+  maxResults: 3,
+  apiKey: process.env.TAVILY_API_KEY,
+});
+
+// Define a traditional news search tool as backup
 const searchNews = tool(async ({ query }) => {
   console.log(`🔍 Tool: search_news - Searching for news about: "${query}"`);
   
@@ -68,6 +76,47 @@ const summarizeArticle = tool(async ({ url, maxLength }) => {
 const agentInstances = new Map();
 
 /**
+ * Fetch conversation history from the database
+ */
+async function getConversationHistory(conversationId: string) {
+  console.log(`📚 Getting conversation history for: ${conversationId}`);
+  
+  try {
+    const supabase = await createClient();
+    
+    const { data, error } = await supabase
+      .from("messages")
+      .select("*")
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: true });
+      
+    if (error) {
+      console.error("Error fetching conversation history:", error);
+      return [];
+    }
+    
+    console.log(`📚 Fetched ${data.length} messages from conversation history`);
+    return data;
+  } catch (error) {
+    console.error("Error in getConversationHistory:", error);
+    return [];
+  }
+}
+
+/**
+ * Format conversation history into prompt-friendly format
+ */
+function formatMessagesForAgent(messages: Array<{
+  sender: string;
+  content: string;
+}>) {
+  return messages.map(msg => ({
+    role: msg.sender === "user" ? "user" : "assistant",
+    content: msg.content
+  }));
+}
+
+/**
  * Get or create an agent instance for a specific conversation
  */
 export const getAgent = (conversationId: string) => {
@@ -81,8 +130,8 @@ export const getAgent = (conversationId: string) => {
   console.log(`🆕 Agent: Creating new agent for conversation ID: ${conversationId}`);
   
   // Define the tools for the agent to use
-  const tools = [searchNews, summarizeArticle];
-  console.log(`🧰 Agent: Configured with ${tools.length} tools: ${tools.map(t => t.name).join(', ')}`);
+  const tools = [searchNewsTavily, searchNews, summarizeArticle];
+  console.log(`🧰 Agent: Configured with ${tools.length} tools: ${tools.map(t => t.name || t.schema?.name).join(', ')}`);
   
   // Initialize the model
   console.log(`🧠 Agent: Initializing Claude 3.5 Sonnet model`);
@@ -121,17 +170,29 @@ export const processMessage = async (
     console.log(`🔄 Agent: Processing message for conversation ID: ${conversationId}`);
     console.log(`💬 Agent: Message: "${message.substring(0, 30)}${message.length > 30 ? '...' : ''}"`);
     
+    // Get conversation history for context
+    const conversationHistory = await getConversationHistory(conversationId);
+    const formattedHistory = formatMessagesForAgent(conversationHistory);
+    
+    console.log(`📚 Agent: Including ${formattedHistory.length} messages from conversation history`);
+    
     const agent = getAgent(conversationId);
     
-    // Invoke the agent with the user message
-    console.log(`🚀 Agent: Invoking agent with message`);
+    // Invoke the agent with the user message and conversation history
+    console.log(`🚀 Agent: Invoking agent with message and history`);
+    
+    // If we're continuing a conversation, use the message directly
+    // Otherwise, include context about being a news assistant
+    const messageWithContext = formattedHistory.length > 0
+      ? message
+      : "You are a helpful news assistant. Please provide informative responses about news topics. " + message;
+    
+    // Add the current message to the history
+    formattedHistory.push({ role: "user", content: messageWithContext });
+    
+    // Invoke with the complete message history
     const result = await agent.invoke(
-      {
-        messages: [{
-          role: "user",
-          content: message
-        }]
-      },
+      { messages: formattedHistory },
       { configurable: { thread_id: conversationId } }
     );
     

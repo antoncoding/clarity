@@ -9,6 +9,7 @@ import { TrashIcon } from "./icons";
 import { Modal } from "@/components/ui/Modal";
 import { ConversationItem } from "./conversation-item";
 import { MenuItem } from "./menu-item";
+import { useConversation } from "@/context/conversation-context";
 
 // Define conversation type
 type Conversation = {
@@ -18,13 +19,9 @@ type Conversation = {
 };
 
 export function ConversationsList({ 
-  isExpanded,
-  onSelectConversation,
-  selectedConversationId
+  isExpanded
 }: { 
   isExpanded: boolean;
-  onSelectConversation: (id: string | null) => void;
-  selectedConversationId: string | null
 }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -35,6 +32,7 @@ export function ConversationsList({
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [conversationToDelete, setConversationToDelete] = useState<string | null>(null);
   const [conversationTitleToDelete, setConversationTitleToDelete] = useState<string>("");
+  const { selectedConversationId, setSelectedConversationId } = useConversation();
 
   // Function to generate a random number for conversation title
   const generateRandomTitle = () => {
@@ -115,7 +113,7 @@ export function ConversationsList({
       // If deleted conversation was selected, reset to new chat
       if (selectedConversationId === conversationToDelete) {
         console.log(`Resetting selected conversation since ${conversationToDelete} was deleted`);
-        onSelectConversation(null);
+        setSelectedConversationId(null);
       }
       
       // Refresh the conversation list
@@ -159,7 +157,7 @@ export function ConversationsList({
 
   // Handle conversation click
   const handleConversationClick = (id: string) => {
-    onSelectConversation(id);
+    setSelectedConversationId(id);
     if (isMobile) {
       setIsOpen(false); // Close sidebar on mobile
     }
@@ -167,7 +165,7 @@ export function ConversationsList({
 
   // Create a new conversation
   const createNewChat = () => {
-    onSelectConversation(null);
+    setSelectedConversationId(null);
     if (isMobile) {
       setIsOpen(false); // Close sidebar on mobile
     }
