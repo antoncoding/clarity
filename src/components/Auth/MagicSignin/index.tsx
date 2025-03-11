@@ -1,6 +1,4 @@
-import Link from "next/link";
 import GoogleSigninButton from "../GoogleSigninButton";
-import SigninWithPassword from "../SigninWithPassword";
 import MagicalSignin from "../MagicalSign";
 
 export default function MagicSignin() {

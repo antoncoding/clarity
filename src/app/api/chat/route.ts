@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { withAuth } from "@/utils/api-middleware";
-import { getAgent, processMessage } from "@/utils/agent";
+import { processMessage } from "@/utils/agent";
 
 // Handle the POST request for sending messages
 export const POST = withAuth(async (req: NextRequest, userId: string) => {

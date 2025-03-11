@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
-import { format } from "date-fns";
-import { MenuItem } from "./menu-item";
 import { cn } from "@/lib/utils";
 import { usePathname } from "next/navigation";
 import { useSidebarContext } from "./sidebar-context";
 import { TrashIcon } from "./icons";
 import { Modal } from "@/components/ui/Modal";
+import { ConversationItem } from "./conversation-item";
+import { MenuItem } from "./menu-item";
 
 // Define conversation type
 type Conversation = {
@@ -179,12 +179,12 @@ export function ConversationsList({
 
   return (
     <>
-      <ul className="space-y-0 mt-1 pl-3"> 
+      <ul className="space-y-1 mt-2 pl-3"> 
         {/* New Chat option */}
         <li>
           <MenuItem
             className={cn(
-              "flex items-center gap-3 py-0.5 text-xs font-normal",
+              "flex items-center gap-3 py-1 text-xs font-normal",
               !isExpanded && "justify-center px-0"
             )}
             as="button"
@@ -192,35 +192,32 @@ export function ConversationsList({
             isActive={pathname === "/"}
           >
             {isExpanded ? (
-              <span className="pl-3">+ New Chat</span>
+              <span className="pl-2 text-sm">+ New Chat</span>
             ) : (
-              <span className="text-xl">+</span>
+              <span className="text-sm">+</span>
             )}
           </MenuItem>
         </li>
         
         {/* List of existing conversations */}
         {conversations.map((conversation) => (
-          <li key={conversation.id}>
-            <MenuItem
-              className={cn(
-                "flex h-5 items-center py-0 px-0 text-2xs font-normal relative",
-                !isExpanded && "justify-center"
-              )}
-              as="button"
-              onClick={() => handleConversationClick(conversation.id)}
+          <li key={conversation.id} className="relative">
+            <ConversationItem
+              isExpanded={isExpanded}
               isActive={selectedConversationId === conversation.id}
+              onClick={() => handleConversationClick(conversation.id)}
+              className="h-auto min-h-[1.75rem]"
             >
               {isExpanded ? (
-                <div className="flex w-full items-center justify-between pr-2">
-                  <span className="pl-3 truncate max-w-[140px] text-gray-600 dark:text-gray-400" title={conversation.title || generateRandomTitle()}>
+                <div className="flex w-full items-center justify-between">
+                  <span className="truncate max-w-[120px] text-inherit" title={conversation.title || generateRandomTitle()}>
                     {conversation.title || generateRandomTitle()}
                   </span>
                   
                   {/* Delete button - always aligned right */}
                   <button 
                     onClick={(e) => confirmDelete(conversation.id, conversation.title, e)}
-                    className="ml-auto p-1 text-gray-400 hover:text-red-500 transition-colors"
+                    className="ml-auto p-2 text-gray-400 hover:text-red-500 transition-colors"
                     aria-label="Delete conversation"
                   >
                     <TrashIcon className="h-3 w-3" />
@@ -228,18 +225,18 @@ export function ConversationsList({
                 </div>
               ) : (
                 <>
-                  <span className="text-xs">#</span>
+                  <span className="text-[10px]">#</span>
                   {/* Small delete button for collapsed view */}
                   <button 
                     onClick={(e) => confirmDelete(conversation.id, conversation.title, e)}
-                    className="absolute -right-1 -top-1 p-1 text-gray-400 hover:text-red-500 transition-colors"
+                    className="absolute -right-1 -top-1 p-2 text-gray-400 hover:text-red-500 transition-colors"
                     aria-label="Delete conversation"
                   >
                     <TrashIcon className="h-2 w-2" />
                   </button>
                 </>
               )}
-            </MenuItem>
+            </ConversationItem>
           </li>
         ))}
       </ul>

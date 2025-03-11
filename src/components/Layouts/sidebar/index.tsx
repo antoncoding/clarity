@@ -11,7 +11,6 @@ import { MenuItem } from "./menu-item";
 import { useSidebarContext } from "./sidebar-context";
 import { createClient } from "@/utils/supabase/client";
 import { ConversationsList } from "./conversations"; 
-import { useRouter } from "next/navigation"; 
 import { useConversation } from "@/context/conversation-context";
 
 // Define the item type to fix TypeScript errors
@@ -25,10 +24,8 @@ type NavItem = {
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { state, setIsOpen, isOpen, isMobile, toggleSidebar } = useSidebarContext();
-  const [expandedItems, setExpandedItems] = useState<string[]>([]);
+  const { setIsOpen, isOpen, isMobile, toggleSidebar } = useSidebarContext();
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const router = useRouter(); 
   const { selectedConversationId, setSelectedConversationId } = useConversation();
 
   useEffect(() => {

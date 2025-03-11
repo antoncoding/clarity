@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { ChatInterface } from "./ChatInterface";
 import { useConversation } from "@/context/conversation-context";
 

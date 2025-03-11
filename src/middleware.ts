@@ -4,6 +4,7 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
 // This middleware refreshes the user's session and adds the supabase-auth-token cookie
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next()
   

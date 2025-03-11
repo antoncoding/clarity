@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useSidebarContext } from "../sidebar/sidebar-context";
 import { MenuIcon } from "./icons";
 import { UserInfo } from "./user-info";

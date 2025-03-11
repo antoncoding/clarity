@@ -1,49 +1,25 @@
 "use client";
-import { EmailIcon, PasswordIcon } from "@/assets/icons";
-import Link from "next/link";
+import { EmailIcon } from "@/assets/icons";
 import React, { useState, useActionState } from "react";
 import InputGroup from "../FormElements/InputGroup";
-import { Checkbox } from "../FormElements/checkbox";
-import { basicMagicLink, signinWithTheMagicLink, signinWithTheGoogle, signInWithMagicLink } from "../../../utils/supabase/actions";
-import { ActionState } from "../../../utils/auth/middleware";
+import { signinWithTheMagicLink } from "../../../utils/supabase/actions";
 import { Spinner } from "@chakra-ui/spinner"
-import { set } from "zod";
  
 
 export default function MagicalSignin() {
-  const [data, setData] = useState({
-    email: process.env.NEXT_PUBLIC_DEMO_USER_MAIL || "",
-    password: process.env.NEXT_PUBLIC_DEMO_USER_PASS || "",
-    remember: false,
-  });
-
+  
   const [email, setUserEmail ] = useState("");
-
-  const [loading, setLoading] = useState(false);
 
   const [state, formAction, isPending] = useActionState(signinWithTheMagicLink, {
     error: null,
     success: '',
   })
 
-  const { error, success } = state
-
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setData({
-      ...data,
-      [e.target.name]: e.target.value,
-    });
-  };
+  const { success } = state
 
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUserEmail(e.target.value);
   }
-
-//   if (success) {
-//     setUserEmail("");
-//   }
-
 
   return (
     <> 

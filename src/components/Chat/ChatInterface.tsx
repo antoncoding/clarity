@@ -2,29 +2,35 @@
 
 import { useState, useRef, useEffect } from "react";
 import { createClient } from "@/utils/supabase/client";
-import { useRouter } from "next/navigation";
-import { v4 as uuidv4 } from "uuid";
+import { v4 as uuidv4 } from 'uuid';
 import ReactMarkdown from "react-markdown";
 
+// Message type for the chat interface
 type Message = {
   id: string;
   content: string;
   sender: "user" | "agent";
-  status?: "sent" | "processing" | "completed" | "error";
+  status: "sent" | "processing" | "completed" | "error";
   timestamp: Date;
 };
 
-interface RealtimePayload {
+// Define the payload type for Supabase real-time updates
+interface PostgresChangesPayload<T> {
   eventType: 'INSERT' | 'UPDATE' | 'DELETE';
-  new: {
-    id: string;
-    content: string;
-    sender: "user" | "agent";
-    status: "sent" | "processing" | "completed" | "error";
-    created_at: string;
-    conversation_id: string;
-  };
+  new: T;
+  old: Partial<T> | null;
 }
+
+interface MessageRow {
+  id: string;
+  content: string;
+  sender: "user" | "agent";
+  status: "sent" | "processing" | "completed" | "error";
+  created_at: string;
+  conversation_id: string;
+}
+
+type RealtimeMessagePayload = PostgresChangesPayload<MessageRow>;
 
 export function ChatInterface({ initialConversationId = null }: { initialConversationId?: string | null }) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -34,7 +40,6 @@ export function ChatInterface({ initialConversationId = null }: { initialConvers
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [conversationTitle, setConversationTitle] = useState<string>("New Chat");
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
   const supabase = createClient();
 
   // Watch for changes to initialConversationId prop
@@ -116,68 +121,76 @@ export function ChatInterface({ initialConversationId = null }: { initialConvers
     const channel = supabase.channel(`messages:${conversationId}`);
     
     channel
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'messages',
-        filter: `conversation_id=eq.${conversationId}`,
-      }, (payload: any) => {
-        console.log('New message inserted:', payload);
-        const newMessage = payload.new;
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: newMessage.id,
-            content: newMessage.content,
-            sender: newMessage.sender,
-            status: newMessage.status,
-            timestamp: new Date(newMessage.created_at),
-          },
-        ]);
-      })
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'messages',
-        filter: `conversation_id=eq.${conversationId}`,
-      }, (payload: any) => {
-        console.log('Message updated:', payload);
-        const updatedMessage = payload.new;
-        
-        // If the status changed from processing to completed, log it
-        if (updatedMessage.status === "completed") {
-          console.log("✅ Agent response completed for message:", updatedMessage.id);
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${conversationId}`,
+        }, 
+        (payload: RealtimeMessagePayload) => {
+          console.log('New message inserted:', payload);
+          const newMessage = payload.new;
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: newMessage.id,
+              content: newMessage.content,
+              sender: newMessage.sender,
+              status: newMessage.status,
+              timestamp: new Date(newMessage.created_at),
+            },
+          ]);
         }
-        
-        setMessages((prev) =>
-          prev.map((msg) => {
-            // Match by ID for existing database messages
-            if (msg.id === updatedMessage.id) {
-              console.log(`Updating message with id ${msg.id}`, updatedMessage);
-              return {
-                ...msg,
-                content: updatedMessage.content,
-                status: updatedMessage.status,
-              };
-            }
-            
-            // For temporary processing messages, identify and replace when agent messages come in
-            if (msg.status === "processing" && msg.sender === "agent" && 
-                updatedMessage.sender === "agent" && updatedMessage.status === "completed") {
-              console.log(`Replacing processing message with completed agent message: ${updatedMessage.id}`);
-              return {
-                id: updatedMessage.id,
-                content: updatedMessage.content,
-                sender: updatedMessage.sender,
-                status: updatedMessage.status,
-                timestamp: new Date(updatedMessage.created_at),
-              };
-            }
-            
-            return msg;
-          })
-        );
-      })
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${conversationId}`,
+        }, 
+        (payload: RealtimeMessagePayload) => {
+          console.log('Message updated:', payload);
+          const updatedMessage = payload.new;
+          
+          // If the status changed from processing to completed, log it
+          if (updatedMessage.status === "completed") {
+            console.log("✅ Agent response completed for message:", updatedMessage.id);
+          }
+          
+          setMessages((prev) =>
+            prev.map((msg) => {
+              // Match by ID for existing database messages
+              if (msg.id === updatedMessage.id) {
+                console.log(`Updating message with id ${msg.id}`, updatedMessage);
+                return {
+                  ...msg,
+                  content: updatedMessage.content,
+                  status: updatedMessage.status,
+                };
+              }
+              
+              // For temporary processing messages, identify and replace when agent messages come in
+              if (msg.status === "processing" && msg.sender === "agent" && 
+                  updatedMessage.sender === "agent" && updatedMessage.status === "completed") {
+                console.log(`Replacing processing message with completed agent message: ${updatedMessage.id}`);
+                return {
+                  id: updatedMessage.id,
+                  content: updatedMessage.content,
+                  sender: updatedMessage.sender,
+                  status: updatedMessage.status,
+                  timestamp: new Date(updatedMessage.created_at),
+                };
+              }
+              
+              return msg;
+            })
+          );
+        }
+      )
       .subscribe();
 
     return () => {
