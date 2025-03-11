@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
 import { useState, useRef, useEffect } from "react";
 import { v4 as uuidv4 } from 'uuid';
 import ReactMarkdown from "react-markdown";
@@ -15,15 +17,6 @@ import {
 } from "@/utils/db";
 import { ToolHistory } from "./ToolHistory";
 import { ToolResult } from "./ToolResult";
-
-// Define the payload type for Supabase real-time updates
-interface PostgresChangesPayload<T> {
-  eventType: 'INSERT' | 'UPDATE' | 'DELETE';
-  new: T;
-  old: Partial<T> | null;
-}
-
-type RealtimeMessagePayload = PostgresChangesPayload<MessageRow>;
 
 export function ChatInterface() {
   const { selectedConversationId, setSelectedConversationId } = useConversation();

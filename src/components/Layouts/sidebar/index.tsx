@@ -11,7 +11,6 @@ import { MenuItem } from "./menu-item";
 import { useSidebarContext } from "./sidebar-context";
 import { createClient } from "@/utils/supabase/client";
 import { ConversationsList } from "./conversations"; 
-import { useConversation } from "@/context/conversation-context";
 
 // Define the item type to fix TypeScript errors
 type NavItem = {
