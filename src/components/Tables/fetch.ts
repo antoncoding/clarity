@@ -1,5 +1,3 @@
-import * as logos from "@/assets/logos";
-
 export async function getTopProducts() {
   // Fake delay
   await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -83,7 +81,7 @@ export async function getTopChannels() {
       revenues: 4220,
       sales: 3456,
       conversion: 2.59,
-      logo: logos.google,
+      logo: "/images/logos/google.svg",
     },
     {
       name: "X.com",
@@ -91,7 +89,7 @@ export async function getTopChannels() {
       revenues: 4220,
       sales: 3456,
       conversion: 2.59,
-      logo: logos.x,
+      logo: "/images/logos/x.svg",
     },
     {
       name: "Github",
@@ -99,7 +97,7 @@ export async function getTopChannels() {
       revenues: 4220,
       sales: 3456,
       conversion: 2.59,
-      logo: logos.github,
+      logo: "/images/logos/github.svg",
     },
     {
       name: "Vimeo",
@@ -107,7 +105,7 @@ export async function getTopChannels() {
       revenues: 4220,
       sales: 3456,
       conversion: 2.59,
-      logo: logos.vimeo,
+      logo: "/images/logos/vimeo.svg",
     },
     {
       name: "Facebook",
@@ -115,7 +113,7 @@ export async function getTopChannels() {
       revenues: 4220,
       sales: 3456,
       conversion: 2.59,
-      logo: logos.facebook,
+      logo: "/images/logos/facebook.svg",
     },
   ];
 }

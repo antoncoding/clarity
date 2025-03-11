@@ -6,41 +6,47 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { NAV_DATA } from "./data";
-import { ArrowLeftIcon, ChevronUp } from "./icons";
+import { Authentication } from "./icons";
 import { MenuItem } from "./menu-item";
 import { useSidebarContext } from "./sidebar-context";
+import { createClient } from "../../../../utils/supabase/client";
+
+// Define the item type to fix TypeScript errors
+type NavItem = {
+  title: string;
+  icon: React.ComponentType<{ className?: string }>;
+  url?: string;
+  items: Array<{ title: string; url: string }>;
+};
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { setIsOpen, isOpen, isMobile, toggleSidebar } = useSidebarContext();
+  const { state, setIsOpen, isOpen, isMobile, toggleSidebar } = useSidebarContext();
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
-
-  const toggleExpanded = (title: string) => {
-    setExpandedItems((prev) => (prev.includes(title) ? [] : [title]));
-
-    // Uncomment the following line to enable multiple expanded items
-    // setExpandedItems((prev) =>
-    //   prev.includes(title) ? prev.filter((t) => t !== title) : [...prev, title],
-    // );
-  };
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
-    // Keep collapsible open, when it's subpage is active
-    NAV_DATA.some((section) => {
-      return section.items.some((item) => {
-        return item.items.some((subItem) => {
-          if (subItem.url === pathname) {
-            if (!expandedItems.includes(item.title)) {
-              toggleExpanded(item.title);
-            }
+    // Check if dark mode is enabled
+    setIsDarkMode(document.documentElement.classList.contains('dark'));
+  }, []);
 
-            // Break the loop
-            return true;
-          }
-        });
-      });
-    });
-  }, [pathname]);
+  const toggleDarkMode = () => {
+    document.documentElement.classList.toggle('dark');
+    setIsDarkMode(!isDarkMode);
+  };
+
+  const handleSignOut = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    window.location.href = '/auth/sign-in';
+  };
+
+  // Handle click on the collapsed sidebar to expand it
+  const handleSidebarClick = () => {
+    if (!isOpen && !isMobile) {
+      toggleSidebar();
+    }
+  };
 
   return (
     <>
@@ -55,123 +61,131 @@ export function Sidebar() {
 
       <aside
         className={cn(
-          "max-w-[290px] overflow-hidden border-r border-gray-200 bg-white transition-[width] duration-200 ease-linear dark:border-gray-800 dark:bg-gray-dark",
+          "overflow-hidden border-r border-gray-200 bg-white transition-all duration-300 ease-linear dark:border-gray-800 dark:bg-gray-dark",
           isMobile ? "fixed bottom-0 top-0 z-50" : "sticky top-0 h-screen",
-          isOpen ? "w-full" : "w-0",
+          isOpen ? "w-[250px]" : "w-[60px] cursor-pointer",
         )}
         aria-label="Main navigation"
-        aria-hidden={!isOpen}
-        inert={!isOpen}
+        onClick={!isOpen && !isMobile ? handleSidebarClick : undefined}
       >
-        <div className="flex h-full flex-col py-10 pl-[25px] pr-[7px]">
-          <div className="relative pr-4.5">
-            <Link
-              href={"/"}
-              onClick={() => isMobile && toggleSidebar()}
-              className="px-0 py-2.5 min-[850px]:py-0"
-            >
-              <Logo />
-            </Link>
-
-            {isMobile && (
+        <div className="flex h-full flex-col py-4 pl-3 pr-2">
+          <div className="relative flex items-center justify-center">
+            {isOpen ? (
+              <Link
+                href={"/"}
+                onClick={() => isMobile && toggleSidebar()}
+                className="flex items-center justify-center"
+              >
+                <Logo compact={false} />
+              </Link>
+            ) : (
+              <div className="flex items-center justify-center py-2">
+                <Logo compact={true} />
+              </div>
+            )}
+            
+            {/* Close button for mobile */}
+            {isMobile && isOpen && (
               <button
                 onClick={toggleSidebar}
-                className="absolute left-3/4 right-4.5 top-1/2 -translate-y-1/2 text-right"
+                className="absolute right-0 top-0 p-1 text-gray-500"
+                aria-label="Close sidebar"
               >
-                <span className="sr-only">Close Menu</span>
-
-                <ArrowLeftIcon className="ml-auto size-7" />
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            )}
+            
+            {/* Collapse button for desktop */}
+            {!isMobile && isOpen && (
+              <button
+                onClick={toggleSidebar}
+                className="absolute -right-1 top-0 p-1 text-primary-500 hover:text-primary-700 dark:text-primary-300 dark:hover:text-primary-100"
+                aria-label="Collapse sidebar"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
               </button>
             )}
           </div>
 
           {/* Navigation */}
-          <div className="custom-scrollbar mt-6 flex-1 overflow-y-auto pr-3 min-[850px]:mt-10">
+          <div className="custom-scrollbar mt-6 flex-1 overflow-y-auto pr-2">
             {NAV_DATA.map((section) => (
-              <div key={section.label} className="mb-6">
-                <h2 className="mb-5 text-sm font-medium text-dark-4 dark:text-dark-6">
-                  {section.label}
-                </h2>
+              <div key={section.label} className="mb-4">
+                {isOpen && (
+                  <h2 className="mb-2 text-xs font-medium text-primary-700 dark:text-primary-300">
+                    {section.label}
+                  </h2>
+                )}
 
                 <nav role="navigation" aria-label={section.label}>
-                  <ul className="space-y-2">
-                    {section.items.map((item) => (
-                      <li key={item.title}>
-                        {item.items.length ? (
-                          <div>
-                            <MenuItem
-                              isActive={item.items.some(
-                                ({ url }) => url === pathname,
-                              )}
-                              onClick={() => toggleExpanded(item.title)}
-                            >
-                              <item.icon
-                                className="size-6 shrink-0"
-                                aria-hidden="true"
-                              />
-
-                              <span>{item.title}</span>
-
-                              <ChevronUp
-                                className={cn(
-                                  "ml-auto rotate-180 transition-transform duration-200",
-                                  expandedItems.includes(item.title) &&
-                                    "rotate-0",
-                                )}
-                                aria-hidden="true"
-                              />
-                            </MenuItem>
-
-                            {expandedItems.includes(item.title) && (
-                              <ul
-                                className="ml-9 mr-0 space-y-1.5 pb-[15px] pr-0 pt-2"
-                                role="menu"
-                              >
-                                {item.items.map((subItem) => (
-                                  <li key={subItem.title} role="none">
-                                    <MenuItem
-                                      as="link"
-                                      href={subItem.url}
-                                      isActive={pathname === subItem.url}
-                                    >
-                                      <span>{subItem.title}</span>
-                                    </MenuItem>
-                                  </li>
-                                ))}
-                              </ul>
+                  <ul className="space-y-1">
+                    {section.items.map((item: NavItem) => {
+                      const href = item.url || "/" + item.title.toLowerCase().split(" ").join("-");
+                        
+                      return (
+                        <li key={item.title}>
+                          <MenuItem
+                            className={cn(
+                              "flex items-center gap-3 py-2",
+                              !isOpen && "justify-center px-0"
                             )}
-                          </div>
-                        ) : (
-                          (() => {
-                            const href =
-                              "url" in item
-                                ? item.url + ""
-                                : "/" +
-                                  item.title.toLowerCase().split(" ").join("-");
+                            as="link"
+                            href={href}
+                            isActive={pathname === href}
+                          >
+                            <item.icon
+                              className="size-5 shrink-0 text-primary-600 dark:text-primary-300"
+                              aria-hidden="true"
+                            />
 
-                            return (
-                              <MenuItem
-                                className="flex items-center gap-3 py-3"
-                                as="link"
-                                href={href}
-                                isActive={pathname === href}
-                              >
-                                <item.icon
-                                  className="size-6 shrink-0"
-                                  aria-hidden="true"
-                                />
-
-                                <span>{item.title}</span>
-                              </MenuItem>
-                            );
-                          })()
-                        )}
-                      </li>
-                    ))}
+                            {isOpen && <span className="text-sm">{item.title}</span>}
+                          </MenuItem>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </nav>
               </div>
             ))}
+          </div>
+          
+          {/* Settings and Logout at bottom */}
+          <div className="mt-auto border-t border-gray-200 pt-3 dark:border-gray-800">
+            {/* Theme toggle */}
+            <button 
+              className={cn(
+                "mb-2 flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm hover:bg-primary-50 dark:hover:bg-primary-900/30",
+                !isOpen && "justify-center px-0"
+              )}
+              onClick={toggleDarkMode}
+            >
+              {isDarkMode ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="size-5 text-primary-500 dark:text-primary-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="size-5 text-primary-500 dark:text-primary-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              )}
+              {isOpen && <span className="text-gray-700 dark:text-gray-300">{isDarkMode ? "Light Mode" : "Dark Mode"}</span>}
+            </button>
+            
+            {/* Logout button */}
+            <button 
+              className={cn(
+                "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-accent-600 hover:bg-accent-50 dark:text-accent-300 dark:hover:bg-accent-900/30",
+                !isOpen && "justify-center px-0"
+              )}
+              onClick={handleSignOut}
+            >
+              <Authentication className="size-5" />
+              {isOpen && <span>Logout</span>}
+            </button>
           </div>
         </div>
       </aside>
