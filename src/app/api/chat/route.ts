@@ -1,130 +1,181 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/utils/supabase/server";
-import { v4 as uuidv4 } from "uuid";
 import { withAuth } from "@/utils/api-middleware";
+import { getAgent, processMessage } from "@/utils/agent";
 
-export const POST = withAuth(async (request: NextRequest, userId: string) => {
-  console.log(" API: /api/chat - Processing new message request");
+// Handle the POST request for sending messages
+export const POST = withAuth(async (req: NextRequest, userId: string) => {
   try {
-    const supabase = createClient();
-    
     // Parse the request body
-    const body = await request.json();
+    const body = await req.json();
     const { message, conversationId } = body;
-    console.log(` Received message: "${message.substring(0, 30)}${message.length > 30 ? '...' : ''}"`);
-    console.log(` Conversation ID: ${conversationId || 'New conversation'}`);
+
+    console.log(`📨 Received message from user ${userId}`);
     
     if (!message) {
-      console.log(" Missing message content");
       return NextResponse.json(
         { error: "Message is required" },
         { status: 400 }
       );
     }
-    
-    let currentConversationId = conversationId;
-    
-    // If no conversation ID is provided, create a new conversation
-    if (!currentConversationId) {
-      console.log(" Creating new conversation...");
+
+    const supabase = createClient();
+
+    // Create a new conversation if one doesn't exist
+    let actualConversationId = conversationId;
+    if (!actualConversationId) {
+      console.log("🔄 Creating new conversation");
+      
+      // Create a new conversation in the database
       const { data: newConversation, error: conversationError } = await supabase
         .from("conversations")
-        .insert({
-          user_id: userId,
-          title: message.substring(0, 30) + (message.length > 30 ? "..." : ""),
-        })
+        .insert([{ user_id: userId, title: message.substring(0, 50) }])
         .select("id")
         .single();
-      
-      if (conversationError) {
-        console.error(" Error creating conversation:", conversationError);
+
+      if (conversationError || !newConversation) {
+        console.error("❌ Error creating conversation:", conversationError);
         return NextResponse.json(
-          { error: "Failed to create conversation" },
+          { error: "Error creating conversation" },
           { status: 500 }
         );
       }
-      
-      currentConversationId = newConversation.id;
-      console.log(` New conversation created: ${currentConversationId}`);
+
+      actualConversationId = newConversation.id;
+      console.log(`✅ New conversation created: ${actualConversationId}`);
+    } else {
+      // Verify the user owns this conversation
+      const { data: conversationData, error: conversationError } = await supabase
+        .from("conversations")
+        .select("id")
+        .eq("id", actualConversationId)
+        .eq("user_id", userId)
+        .single();
+        
+      if (conversationError || !conversationData) {
+        console.error("❌ Conversation not found or not owned by user");
+        return NextResponse.json(
+          { error: "Conversation not found" },
+          { status: 404 }
+        );
+      }
     }
-    
-    // Insert the user message
-    console.log(" Saving user message...");
-    const userMessageId = uuidv4();
-    const { error: userMessageError } = await supabase
+
+    // Add the message to the database
+    const { data: messageData, error: messageError } = await supabase
       .from("messages")
-      .insert({
-        id: userMessageId,
-        conversation_id: currentConversationId,
-        content: message,
-        sender: "user",
-        status: "completed",
-      });
-    
-    if (userMessageError) {
-      console.error(" Error inserting user message:", userMessageError);
+      .insert([
+        {
+          conversation_id: actualConversationId,
+          user_id: userId,
+          content: message,
+          sender: "user",
+          status: "sent",
+        },
+      ])
+      .select("id")
+      .single();
+
+    if (messageError || !messageData) {
+      console.error("❌ Error inserting message:", messageError);
       return NextResponse.json(
-        { error: "Failed to insert user message" },
+        { error: "Error sending message" },
         { status: 500 }
       );
     }
-    console.log(` User message saved with ID: ${userMessageId}`);
-    
-    // Insert a placeholder agent message
-    console.log(" Creating placeholder agent message...");
-    const agentMessageId = uuidv4();
-    const { error: agentMessageError } = await supabase
+
+    console.log(`✅ User message inserted: ${messageData.id}`);
+
+    // Create an agent message in "processing" state
+    const { data: agentMessageData, error: agentMessageError } = await supabase
       .from("messages")
-      .insert({
-        id: agentMessageId,
-        conversation_id: currentConversationId,
-        content: "Processing your request...",
-        sender: "agent",
-        status: "processing",
-      });
-    
-    if (agentMessageError) {
-      console.error(" Error inserting agent message:", agentMessageError);
+      .insert([
+        {
+          conversation_id: actualConversationId,
+          user_id: userId,
+          content: "Processing your message...",
+          sender: "agent",
+          status: "processing",
+        },
+      ])
+      .select("id")
+      .single();
+
+    if (agentMessageError || !agentMessageData) {
+      console.error("❌ Error inserting agent message:", agentMessageError);
       return NextResponse.json(
-        { error: "Failed to insert agent message" },
+        { error: "Error sending message" },
         { status: 500 }
       );
     }
-    console.log(` Agent message created with ID: ${agentMessageId}`);
-    
-    // Trigger the background processing
-    console.log(" Triggering background processing...");
-    const origin = request.headers.get("origin") || '';
-    // We don't await this to keep the response time fast
-    fetch(`${origin}/api/process-news`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        // Forward auth cookie
-        "Cookie": request.headers.get("cookie") || '',
-      },
-      body: JSON.stringify({
-        messageId: agentMessageId,
-        query: message,
-        conversationId: currentConversationId,
-      }),
-    }).catch(error => {
-      console.error(" Error triggering background process:", error);
-    });
-    
-    // Return the conversation ID and message IDs
-    console.log(" Chat API request completed successfully");
+
+    console.log(`✅ Agent processing message inserted: ${agentMessageData.id}`);
+
+    // Invoke agent asynchronously
+    processAgentMessage(
+      userId,
+      message,
+      messageData.id,
+      agentMessageData.id,
+      actualConversationId
+    );
+
     return NextResponse.json({
-      conversationId: currentConversationId,
-      userMessageId,
-      agentMessageId,
+      success: true,
+      messageId: messageData.id,
+      agentMessageId: agentMessageData.id,
+      conversationId: actualConversationId,
     });
-    
   } catch (error) {
-    console.error(" Error in chat API:", error);
+    console.error("❌ Unexpected error in chat API:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
     );
   }
 });
+
+// Function to process the agent response asynchronously
+async function processAgentMessage(
+  userId: string,
+  userMessage: string,
+  userMessageId: string,
+  agentMessageId: string,
+  conversationId: string
+) {
+  const supabase = createClient();
+
+  try {
+    console.log(`🤖 Processing agent response for message: ${userMessageId}`);
+    
+    // Call the agent to process the message using the correct API
+    const agentResponse = await processMessage(conversationId, userMessage);
+
+    // Update the agent message with the response
+    const { error: updateError } = await supabase
+      .from("messages")
+      .update({
+        content: agentResponse,
+        status: "completed",
+      })
+      .eq("id", agentMessageId);
+
+    if (updateError) {
+      console.error("❌ Error updating agent message:", updateError);
+      throw updateError;
+    }
+
+    console.log(`✅ Agent response completed for message: ${agentMessageId}`);
+  } catch (error) {
+    console.error("❌ Error in agent processing:", error);
+    
+    // Update the message with an error status
+    await supabase
+      .from("messages")
+      .update({
+        content: "Sorry, there was an error processing your request.",
+        status: "error",
+      })
+      .eq("id", agentMessageId);
+  }
+}

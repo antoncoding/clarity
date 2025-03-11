@@ -11,49 +11,40 @@ export function withAuth(
 ) {
   return async (req: NextRequest) => {
     try {
+      // Create Supabase client - this automatically reads cookies
       const supabase = createClient();
-      let user;
       
-      // Try to get token from Authorization header first (API standard)
-      const authHeader = req.headers.get('authorization');
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        const token = authHeader.split(' ')[1];
-        console.log('🔑 Using Authorization header token for authentication');
+      // Get the current user from session
+      const { data, error } = await supabase.auth.getUser();
+      
+      console.log("Auth check result:", error ? "Error" : "Success");
+      
+      // For development convenience, use a test user ID if no authenticated user is found
+      if (error || !data.user) {
+        console.log("No authenticated user, using test user ID for development");
+        // Using a fixed UUID format test user ID for development
+        const testUserId = "00000000-0000-0000-0000-000000000000";
         
-        // Verify the JWT token
-        const { data, error } = await supabase.auth.getUser(token);
-        
-        if (error || !data.user) {
-          console.log('❌ Invalid token in Authorization header');
-          return NextResponse.json(
-            { error: "Unauthorized - Invalid token" },
-            { status: 401 }
-          );
-        }
-        
-        user = data.user;
-      } else {
-        // Fall back to cookie-based auth if no Authorization header
-        console.log('🔑 Using cookie-based authentication');
-        const { data, error } = await supabase.auth.getUser();
-        
-        if (error || !data.user) {
-          console.log('❌ No authenticated user found');
+        // Check if we're in development mode
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Using test user ID: ${testUserId}`);
+          return handler(req, testUserId);
+        } else {
+          // In production, require proper authentication
+          console.error("Authentication failed:", error?.message || "No user found");
           return NextResponse.json(
             { error: "Unauthorized - Please sign in to use the chat" },
             { status: 401 }
           );
         }
-        
-        user = data.user;
       }
       
-      console.log(`✅ User authenticated: ${user.id}`);
+      console.log(`User authenticated: ${data.user.id}`);
       
       // Call the original handler with the user ID
-      return handler(req, user.id);
+      return handler(req, data.user.id);
     } catch (error) {
-      console.error("❌ Error in authentication middleware:", error);
+      console.error("Error in authentication middleware:", error);
       return NextResponse.json(
         { error: "Authentication error" },
         { status: 500 }

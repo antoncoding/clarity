@@ -130,7 +130,7 @@ export function ChatInterface() {
     setInputValue("");
     
     try {
-      // Send message to backend API
+      // Send message to backend API with credentials included
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: {
@@ -140,10 +140,14 @@ export function ChatInterface() {
           message: userMessage.content,
           conversationId,
         }),
+        // Include credentials to send cookies
+        credentials: "include",
       });
       
       if (!response.ok) {
-        throw new Error("Failed to send message");
+        const errorData = await response.json().catch(() => ({}));
+        console.error("🚨 API error:", response.status, errorData);
+        throw new Error(`Failed to send message: ${response.status}`);
       }
       
       const data = await response.json();
