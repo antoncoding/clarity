@@ -15,7 +15,6 @@ import {
   subscribeToConversationMessages,
   sendMessageToApi
 } from "@/utils/db";
-import { ToolHistory } from "./ToolHistory";
 import { ToolResult } from "./ToolResult";
 
 export function ChatInterface() {
@@ -89,6 +88,18 @@ export function ChatInterface() {
       setMessages((prev) => {
         // If message with this ID already exists, don't add it again
         if (prev.some(msg => msg.id === newMessage.id)) {
+          return prev;
+        }
+        
+        // Enhanced duplicate detection: also check content for user messages to avoid duplications
+        // This handles the case where we optimistically added a user message with a temporary ID
+        if (newMessage.sender === 'user' && 
+            prev.some(msg => msg.sender === 'user' && 
+                            msg.content === newMessage.content &&
+                            // Only consider recent messages (within last 5 seconds) to avoid false positives
+                            msg.timestamp && 
+                            (new Date().getTime() - msg.timestamp.getTime() < 5000))) {
+          console.log('Detected duplicate user message, not adding again');
           return prev;
         }
         
@@ -301,13 +312,7 @@ export function ChatInterface() {
                           {message.content}
                         </ReactMarkdown>
                       )}
-                      
-                      {/* Only show ToolHistory for agent messages with metadata */}
-                      {message.sender === "agent" && 
-                       message.metadata && 
-                       message.message_type === "message" && (
-                        <ToolHistory metadata={message.metadata} />
-                      )}
+                    
                     </div>
                   )}
                 </div>

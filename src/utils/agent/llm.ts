@@ -1,5 +1,4 @@
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
-import { MemorySaver } from "@langchain/langgraph";
 import { ChatAnthropic } from "@langchain/anthropic";
 import { TavilySearchResults } from "@langchain/community/tools/tavily_search";
 import { WikipediaQueryRun } from "@langchain/community/tools/wikipedia_query_run";
@@ -7,16 +6,16 @@ import { CustomDuckDuckGoSearch } from "../tools/duckduckgo";
 
 // Define a news search tool using Tavily
 const searchNewsTavily = new TavilySearchResults({
-    maxResults: 3,
+    maxResults: 2,
     apiKey: process.env.TAVILY_API_KEY,
   });
 
 const searchWikipedia = new WikipediaQueryRun({
-    topKResults: 3,
+    topKResults: 5,
     maxDocContentLength: 4000,
 });
 
-const searchDuckDuckGo = new CustomDuckDuckGoSearch({ maxResults: 5 });
+const searchDuckDuckGo = new CustomDuckDuckGoSearch({ maxResults: 8 });
   
 // Create a map of thread IDs to agent instances
 const agentInstances = new Map();
@@ -48,14 +47,13 @@ export const getAgent = (conversationId: string) => {
   
     // Initialize memory to persist state between graph runs
     console.log(`💾 Agent: Setting up memory saver for conversation persistence`);
-    const checkpointer = new MemorySaver();
   
     // Create the agent
     console.log(`🔄 Agent: Creating React agent with LangGraph`);
     const agent = createReactAgent({
       llm: model,
       tools,
-      checkpointSaver: checkpointer,
+      // dont' use check pointer, everytime we refeed everything back from db
     });
   
     // Store the agent instance

@@ -250,6 +250,7 @@ export function ConversationsList({
         }}
         title="Delete Conversation"
         size="sm"
+        className="z-[900]" // Add higher z-index to ensure modal content appears above everything
         footer={
           <>
             <button

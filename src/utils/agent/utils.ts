@@ -68,6 +68,8 @@ export function parseAgentMessages(rawMessages: (AIMessage | HumanMessage | Tool
       // Handle AI messages
       if (msg instanceof AIMessage) {
         // Get the content, handling both string and array formats
+        // console.log('Raw AI Message', JSON.stringify(msg, null, 2))
+
         const content = extractMessageContent(msg.content);
         
         // Skip temporary processing messages
@@ -113,6 +115,9 @@ export function parseAgentMessages(rawMessages: (AIMessage | HumanMessage | Tool
       
       // Tool messages contain tool results
       if (msg instanceof ToolMessage) {
+
+        console.log('Raw Tool Message', JSON.stringify(msg, null, 2))
+
         return {
           type: 'tool_result' as const,
           content: msg.content as string,
@@ -132,8 +137,6 @@ export function parseAgentMessages(rawMessages: (AIMessage | HumanMessage | Tool
  * Process agent response to extract final response and structured messages
  */
 export function processAgentResponse(messages: (HumanMessage | AIMessage | ToolMessage)[]): ParsedAgentResponse {
-
-  console.log('messages is array', Array.isArray(messages), messages.length)
 
   if (!messages) {
     return {
