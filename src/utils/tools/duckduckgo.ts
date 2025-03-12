@@ -59,7 +59,25 @@ export class CustomDuckDuckGoSearch extends Tool {
       );
     } catch (error: any) { 
       console.error("Error performing DuckDuckGo search:", error);
-      throw new Error(`Failed to search DuckDuckGo: ${error?.message}`);
+      
+      // Return a friendly message instead of throwing
+      const errorMessage = error?.message || "Unknown error";
+      const isRateLimited = errorMessage.includes("detected an anomaly") || 
+                            errorMessage.includes("too quickly");
+      
+      if (isRateLimited) {
+        return JSON.stringify({
+          error: true,
+          message: "DuckDuckGo search rate limited. Try using a different search strategy or tool.",
+          suggestion: "Consider using Wikipedia, WebBrowser, or try a different search query."
+        });
+      } else {
+        return JSON.stringify({
+          error: true,
+          message: `DuckDuckGo search failed: ${errorMessage}`,
+          suggestion: "Try using a different search tool or reformulate your query."
+        });
+      }
     }
   }
 }

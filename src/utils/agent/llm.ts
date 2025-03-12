@@ -32,7 +32,7 @@ const searchWikipedia = new WikipediaQueryRun({
     maxDocContentLength: 4000,
 });
 
-const searchDuckDuckGo = new CustomDuckDuckGoSearch({ maxResults: 8 });
+const searchDuckDuckGo = new CustomDuckDuckGoSearch({ maxResults: 5 });
   
 // Create a map of thread IDs to agent instances
 const agentInstances = new Map();
