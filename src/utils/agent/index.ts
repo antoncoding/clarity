@@ -13,7 +13,7 @@ You need to break the task into 2 parts: Namely "Search" and "Analysis"
 
 On the Search step: Try to diversify the search tools, Some guidelines: 
 * use DuckDuckGo to search for more entries on specific query
-* use TAVILY only when you can't find more diversified answered
+* use TAVILY only when you can't find more diversified answers
 * use Wikipedia when you need knowledge on topics that's less time sensitive, but proof and truth is more important.
 
 On the Analysis step: Try to
@@ -75,8 +75,23 @@ async function getConversationHistory(conversationId: string) {
 function formatMessagesForAgent(messages: Array<{
   sender: string;
   content: string;
+  message_type?: string;
 }>) {
-  return messages.map(msg => ({
+
+  // We want to
+  // 1. Remove all tool_call type, (intermediate messages like "Let me think about this")
+  // 2. Remove all tool results that were too old
+  const filteredMessages = messages.filter(msg => msg.message_type !== "tool_call")
+
+  // Remove tool_result that not the last 8 messages
+  const LOOKBACK = 8;
+  const length = filteredMessages.length;
+  const relevantMessages = filteredMessages
+    .filter((msg, idx) => {
+      return msg.message_type !== "tool_result" || idx >= length - LOOKBACK
+    })
+
+  return relevantMessages.map(msg => ({
     role: msg.sender === "user" ? "user" : "assistant",
     content: msg.content
   }));
@@ -122,7 +137,6 @@ export const processMessage = async (
 
 
     console.log(`✅ Agent: Agent processing complete`);
-    console.log(`💬 Agent: Agent response:`, JSON.stringify(messages, null, 2));
     
     // Use the utility function to process the agent response
     const processedResponse = processAgentResponse(messages);
