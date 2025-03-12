@@ -1,6 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { AGENT_MESSAGES, processAgentResponse } from "./utils";
-import { getAgent } from "./llm";
+import { getAgent, mainSearchToolName } from "./llm";
 import { AIMessage, HumanMessage, ToolMessage } from "@langchain/core/messages";
 
 
@@ -12,7 +12,7 @@ export const newsPrompt = `You provide informative responses about news topics. 
 You need to break the task into 2 parts: Namely "Search" and "Analysis"
 
 On the Search step: Try to diversify the search tools, Some guidelines: 
-* use DuckDuckGo to search for news related data
+* use ${mainSearchToolName} to search for news related data
 * If the request is related to a region with non-English language, try to search with both English and local language to get the most comprehensive results
 * Try multiple iterations with different search queries, to diversify the search results and find the most relevant ones
 * use WebBrowser to search to parse the web page and extract the content when the search result is not ccomplete

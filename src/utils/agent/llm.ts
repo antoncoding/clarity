@@ -1,13 +1,14 @@
 import { OpenAIEmbeddings } from "@langchain/openai";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { ChatAnthropic } from "@langchain/anthropic";
-// import { TavilySearchResults } from "@langchain/community/tools/tavily_search";
 import { WikipediaQueryRun } from "@langchain/community/tools/wikipedia_query_run";
 import { CustomDuckDuckGoSearch } from "../tools/duckduckgo";
+import { BraveSearch } from "@langchain/community/tools/brave_search";
 
 // @ts-expect-error no types for webbrowser
 import { WebBrowser } from "langchain/tools/webbrowser";
 
+const isLocalhost = process.env.SITE_URL?.includes('localhost')
 
 const websearchModal = new ChatAnthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -16,11 +17,9 @@ const websearchModal = new ChatAnthropic({
 
 const embeddings = new OpenAIEmbeddings();
 
-// // Define a news search tool using Tavily
-// const searchNewsTavily = new TavilySearchResults({
-//     maxResults: 2,
-//     apiKey: process.env.TAVILY_API_KEY,
-//   });
+const braveSearch = new BraveSearch({
+  apiKey: process.env.BRAVE_SEARCH_API_KEY,
+});
 
 const websearchTool = new WebBrowser({
     model: websearchModal,
@@ -31,12 +30,14 @@ const searchWikipedia = new WikipediaQueryRun({
     topKResults: 5,
     maxDocContentLength: 4000,
 });
-
 const searchDuckDuckGo = new CustomDuckDuckGoSearch({ maxResults: 5 });
-  
+
+
+const mainSearchToUse = isLocalhost ? searchDuckDuckGo : braveSearch;
+export const mainSearchToolName = isLocalhost ? "DuckDuckGoSearch" : "BraveSearch";
+
 // Create a map of thread IDs to agent instances
 const agentInstances = new Map();
-  
 
 /**
  * Get or create an agent instance for a specific conversation
@@ -52,7 +53,7 @@ export const getAgent = (conversationId: string) => {
     console.log(`🆕 Agent: Creating new agent for conversation ID: ${conversationId}`);
     
     // Define the tools for the agent to use
-    const tools = [searchWikipedia, searchDuckDuckGo, websearchTool];
+    const tools = [searchWikipedia, websearchTool, mainSearchToUse];
     console.log(`🧰 Agent: Configured with ${tools.length} tools: ${tools.map(t => t.name).join(', ')}`);
     
     // Initialize the model
