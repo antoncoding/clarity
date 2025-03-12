@@ -141,8 +141,6 @@ export function Sidebar() {
                               "flex items-center gap-2 sm:gap-3 py-2 sm:py-3 text-xs sm:text-sm",
                               !isOpen && "justify-center px-0"
                             )}
-                            as="link"
-                            href={href}
                             isActive={pathname === href}
                             onClick={handleMobileLinkClick} // Close sidebar when clicking a link on mobile
                           >

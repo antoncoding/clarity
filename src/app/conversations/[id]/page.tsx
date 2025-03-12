@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { ChatContainer } from "@/components/Chat/ChatContainer";
 
 // Page component for a specific conversation
-export default async function ConversationPage({}: { params: { id: string }}) {
+export default async function ConversationPage({  }: { params: { id: string } }) {
   const supabase = await createClient();
   const session = await supabase.auth.getUser();
 
@@ -13,7 +13,7 @@ export default async function ConversationPage({}: { params: { id: string }}) {
 
   return (
     <div className="h-full">
-      <ChatContainer  />
+      <ChatContainer />
     </div>
   );
 }

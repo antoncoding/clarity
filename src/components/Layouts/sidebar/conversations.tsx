@@ -186,7 +186,7 @@ export function ConversationsList({ isExpanded, onConversationClick }: Conversat
             isActive={pathname === "/"}
           >
             {isExpanded && (
-              <div className="flex items-center gap-2"> <CirclePlus className="h-4 w-4" /> <span className="text-sm">  New Chat</span> </div>
+              <div className="p-1 flex items-center gap-2"> <CirclePlus className="h-4 w-4" /> <span className="text-sm">  New Chat</span> </div>
             )}
           </MenuItem>
         </li>
@@ -201,7 +201,7 @@ export function ConversationsList({ isExpanded, onConversationClick }: Conversat
                 setSelectedConversationId(conversation.id);
                 if (onConversationClick) onConversationClick(); // Call the callback when a conversation is clicked
               }}
-              className="h-auto min-h-[1.75rem]"
+              className="h-auto p-1 px-4"
             >
               {isExpanded ? (
                 <div className="flex w-full items-center justify-between">
