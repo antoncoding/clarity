@@ -20,11 +20,13 @@ type Conversation = {
   title: string;
 };
 
-export function ConversationsList({ 
-  isExpanded
-}: { 
+// Add to props interface
+interface ConversationsListProps {
   isExpanded: boolean;
-}) {
+  onConversationClick?: () => void; // New prop
+}
+
+export function ConversationsList({ isExpanded, onConversationClick }: ConversationsListProps) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -203,7 +205,10 @@ export function ConversationsList({
             <ConversationItem
               isExpanded={isExpanded}
               isActive={selectedConversationId === conversation.id}
-              onClick={() => handleConversationClick(conversation.id)}
+              onClick={() => {
+                setSelectedConversationId(conversation.id);
+                if (onConversationClick) onConversationClick(); // Call the callback when a conversation is clicked
+              }}
               className="h-auto min-h-[1.75rem]"
             >
               {isExpanded ? (

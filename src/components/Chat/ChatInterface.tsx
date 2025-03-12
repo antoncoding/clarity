@@ -24,9 +24,9 @@ interface MessageProps {
 }
 
 const UserMessage = ({ content }: MessageProps) => (
-  <div className="flex justify-end mb-4 animate-message">
-    <div className="p-3 rounded-lg max-w-[80%] bg-primary-50 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300 animate-message-content">
-      <div className="prose dark:prose-invert max-w-none font-light">
+  <div className="flex justify-end mb-2 sm:mb-4 animate-message">
+    <div className="p-2 sm:p-3 rounded-lg max-w-[85%] sm:max-w-[80%] bg-primary-50 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300 animate-message-content">
+      <div className="prose dark:prose-invert max-w-none font-light text-sm sm:text-base">
         <MarkdownContent content={content} />
       </div>
     </div>
@@ -34,18 +34,18 @@ const UserMessage = ({ content }: MessageProps) => (
 );
 
 const AIMessage = ({ content, isProcessing, metadata, message_type }: MessageProps) => (
-  <div className="flex justify-start mb-4 animate-message">
-    <div className="p-3 rounded-lg max-w-[80%] bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white animate-message-content">
+  <div className="flex justify-start mb-2 sm:mb-4 animate-message">
+    <div className="p-2 sm:p-3 rounded-lg max-w-[85%] sm:max-w-[80%] bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white animate-message-content">
       {isProcessing ? (
         <div className="flex items-center">
-          <BounceLoader color="#0047AB" size={24} />
-          <span className="ml-2">Thinking...</span>
+          <BounceLoader color="#0047AB" size={20} />
+          <span className="ml-2 text-sm">Thinking...</span>
         </div>
       ) : (
         <div className={`prose dark:prose-invert max-w-none ${
           message_type === "tool_call" || message_type === "tool_result"
-            ? "text-gray-500 dark:text-gray-400 text-sm font-light italic"
-            : "font-light"
+            ? "text-gray-500 dark:text-gray-400 text-xs sm:text-sm font-light italic"
+            : "font-light text-sm sm:text-base"
         }`}>
           {message_type === "tool_result" ? (
             <ToolResult 
@@ -278,18 +278,18 @@ export function ChatInterface() {
   return (
     <div className="flex flex-col h-full">
       {/* Chat header */}
-      <div className="border-b border-gray-200 dark:border-gray-800 p-4 flex justify-between items-center">
-        <h2 className="text-lg font-medium">{conversationTitle}</h2>
+      <div className="border-b border-gray-200 dark:border-gray-800 p-3 sm:p-4 flex justify-between items-center">
+        <h2 className="text-base sm:text-lg font-medium truncate max-w-[70%]">{conversationTitle}</h2>
         <button 
           onClick={() => setSelectedConversationId(null)}
-          className="text-sm bg-primary-100 hover:bg-primary-200 text-primary-800 px-3 py-1 rounded"
+          className="text-xs sm:text-sm bg-primary-100 hover:bg-primary-200 text-primary-800 px-2 py-1 sm:px-3 sm:py-1 rounded"
         >
           New Chat
         </button>
       </div>
       
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
         {isLoadingHistory ? (
           <div className="flex justify-center items-center h-full">
             <BounceLoader color="#0047AB" size={40} />
@@ -325,25 +325,30 @@ export function ChatInterface() {
       </div>
       
       {/* Input area */}
-      <div className="border-t border-gray-200 dark:border-gray-800 p-4">
+      <div className="border-t border-gray-200 dark:border-gray-800 p-2 sm:p-4">
         <form onSubmit={handleSendMessage} className="flex space-x-2">
           <input
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             placeholder="Type your message..."
-            className="flex-1 border border-gray-300 dark:border-gray-700 rounded-md p-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+            className="flex-1 border border-gray-300 dark:border-gray-700 rounded-md p-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm sm:text-base"
             disabled={isLoading}
           />
           <button
             type="submit"
-            className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-md"
+            className="bg-primary-600 hover:bg-primary-700 text-white px-3 py-2 rounded-md flex items-center justify-center min-w-[60px] sm:min-w-[80px]"
             disabled={isLoading || !inputValue.trim()}
           >
             {isLoading ? (
-              <BounceLoader color="#0047AB" size={24} />
+              <BounceLoader color="#ffffff" size={20} />
             ) : (
-              "Send"
+              <span className="hidden sm:inline">Send</span>
+            )}
+            {!isLoading && (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:ml-1" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
             )}
           </button>
         </form>
