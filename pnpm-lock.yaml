@@ -53,6 +53,9 @@ importers:
       jsvectormap:
         specifier: ^1.6.0
         version: 1.6.0
+      lucide-react:
+        specifier: ^0.479.0
+        version: 0.479.0(react@19.0.0)
       next:
         specifier: 15.1.6
         version: 15.1.6(@babel/core@7.26.9)(@playwright/test@1.51.0)(babel-plugin-macros@3.1.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -2999,6 +3002,11 @@ packages:
 
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==}
+
+  lucide-react@0.479.0:
+    resolution: {integrity: sha512-aBhNnveRhorBOK7uA4gDjgaf+YlHMdMhQ/3cupk6exM10hWlEU+2QtWYOfhXhjAsmdb6LeKR+NZnow4UxRRiTQ==}
+    peerDependencies:
+      react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
   make-dir@4.0.0:
     resolution: {integrity: sha512-hXdUTZYIVOt1Ex//jAQi+wTZZpUpwBj/0QsOzqegb3rGMMeJiSEu5xLHnYfBrRV4RH2+OCSOO95Is/7x1WJ4bw==}
@@ -6712,7 +6720,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.2
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.8.2)
+      retry-axios: 2.6.0(axios@1.8.2(debug@4.4.0))
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -7438,6 +7446,10 @@ snapshots:
   lru-cache@5.1.1:
     dependencies:
       yallist: 3.1.1
+
+  lucide-react@0.479.0(react@19.0.0):
+    dependencies:
+      react: 19.0.0
 
   make-dir@4.0.0:
     dependencies:
@@ -8246,7 +8258,7 @@ snapshots:
       path-parse: 1.0.7
       supports-preserve-symlinks-flag: 1.0.0
 
-  retry-axios@2.6.0(axios@1.8.2):
+  retry-axios@2.6.0(axios@1.8.2(debug@4.4.0)):
     dependencies:
       axios: 1.8.2(debug@4.4.0)
 

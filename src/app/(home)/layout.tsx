@@ -12,7 +12,7 @@ import type { PropsWithChildren } from "react";
 import { Providers } from "../providers";
 
 export const metadata: Metadata = {
-  title: "TNDR",
+  title: "Clarity",
   description: "Too much news, don't read",
 };
 

@@ -61,7 +61,7 @@ export function Sidebar() {
         className={cn(
           "overflow-hidden border-r border-gray-200 bg-white transition-all duration-300 ease-linear dark:border-gray-800 dark:bg-gray-dark",
           isMobile ? "fixed bottom-0 top-0 z-50" : "sticky top-0 h-screen",
-          isOpen ? "w-[250px]" : "w-[60px] cursor-pointer",
+          isOpen ? "w-[250px]" : "w-[80px] cursor-pointer",
         )}
         aria-label="Main navigation"
         onClick={!isOpen && !isMobile ? handleSidebarClick : undefined}
@@ -171,7 +171,7 @@ export function Sidebar() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
                 </svg>
               )}
-              {isOpen && <span className="text-gray-700 dark:text-gray-300">{isDarkMode ? "Light Mode" : "Dark Mode"}</span>}
+              {isOpen && <span className="text-bold text-gray-700 dark:text-gray-300">{isDarkMode ? "Light Mode" : "Dark Mode"}</span>}
             </button>
             
             <button 

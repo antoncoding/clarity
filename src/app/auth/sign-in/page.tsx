@@ -28,12 +28,14 @@ export default function SignIn() {
                   src={"/images/logo/blue-circle.svg"}
                   alt="Logo"
                   height={32}
+                  width={32}
                 />
                 <Image
                   className="dark:hidden"
                   src={"/images/logo/blue-circle.svg"}
                   alt="Logo"
                   height={32}
+                  width={32}
                 />
               </Link>
               <p className="mb-3 text-xl font-medium text-dark dark:text-white">
@@ -45,18 +47,10 @@ export default function SignIn() {
               </h1>
 
               <p className="w-full max-w-[375px] font-medium text-dark-4 dark:text-dark-6">
-                Please sign in to your account by completing the necessary
-                fields below
+                Please sign in to your account to start using Clarity Depp Search
               </p>
 
-              <div className="mt-31">
-                <Image
-                  src={"/images/grids/grid-02.svg"}
-                  alt="Logo"
-                  width={405}
-                  height={325}
-                  className="mx-auto dark:opacity-30"
-                />
+              <div className="h-[400px] ">
               </div>
             </div>
           </div>

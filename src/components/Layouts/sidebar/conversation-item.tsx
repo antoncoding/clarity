@@ -30,7 +30,7 @@ export function ConversationItem({
       }}
       className={cn(
         "w-full text-xs font-normal text-left transition-all duration-200 cursor-pointer",
-        "rounded-md px-2 py-1.5 my-1", // Added vertical margin between items
+        "rounded-lg px-4 py-1.5 my-1", // Added vertical margin between items
         isActive 
           ? "bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-gray-100" 
           : "text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800",

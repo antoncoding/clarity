@@ -11,6 +11,7 @@ import { ConversationItem } from "./conversation-item";
 import { MenuItem } from "./menu-item";
 import { useConversation } from "@/context/conversation-context";
 import { BounceLoader } from "react-spinners";
+import { CirclePlus } from "lucide-react";
 
 // Define conversation type
 type Conversation = {
@@ -190,10 +191,8 @@ export function ConversationsList({
             onClick={createNewChat}
             isActive={pathname === "/"}
           >
-            {isExpanded ? (
-              <span className="pl-2 text-sm">+ New Chat</span>
-            ) : (
-              <span className="text-sm">+</span>
+            {isExpanded && (
+              <div className="flex items-center gap-2"> <CirclePlus className="h-4 w-4" /> <span className="text-sm">  New Chat</span> </div>
             )}
           </MenuItem>
         </li>
