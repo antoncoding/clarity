@@ -4,6 +4,7 @@ import { validatedAction } from "../auth/middleware";
 import { redirect } from "next/navigation";
 import { createClient } from "./server";
 import config from "../../config";
+import { evalManifestWithRetries } from "next/dist/server/load-components";
 
 const signInSchema = z.object({
   email: z.string().email().min(3).max(255),
@@ -84,7 +85,7 @@ export const signInWithMagicLink = validatedAction(
         options: {
           // set this to false if you do not want the user to be automatically signed up
           shouldCreateUser: true,
-          emailRedirectTo: 'http://localhost:3000',
+          emailRedirectTo: process.env.SITE_URL,
         },
     });
     if (error) {
@@ -134,7 +135,7 @@ export const basicMagicLink = async (prev: any, formData: any) => {
         options: {
           // set this to false if you do not want the user to be automatically signed up
           shouldCreateUser: false,
-          emailRedirectTo: 'http://localhost:3000',
+          emailRedirectTo: process.env.SITE_URL,
         },
       })
 }
