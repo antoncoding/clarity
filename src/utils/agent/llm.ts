@@ -5,7 +5,7 @@ import { ChatAnthropic } from "@langchain/anthropic";
 import { WikipediaQueryRun } from "@langchain/community/tools/wikipedia_query_run";
 import { CustomDuckDuckGoSearch } from "../tools/duckduckgo";
 
-// @ts-expect-error
+// @ts-expect-error no types for webbrowser
 import { WebBrowser } from "langchain/tools/webbrowser";
 
 

@@ -1,7 +1,5 @@
 import { cn } from "@/lib/utils";
 import { cva } from "class-variance-authority";
-import Link from "next/link";
-import { useSidebarContext } from "./sidebar-context";
 
 const menuItemBaseStyles = cva(
   "rounded-lg px-3.5 font-medium text-gray-600 transition-all duration-200 dark:text-gray-400",
