@@ -13,7 +13,7 @@ import { Providers } from "../providers";
 
 export const metadata: Metadata = {
   title: "Clarity",
-  description: "Too much news, don't read",
+  description: "Read news smartly",
 };
 
 export default function RootLayout({ children }: PropsWithChildren) {
