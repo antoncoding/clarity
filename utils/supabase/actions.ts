@@ -4,7 +4,6 @@ import { validatedAction } from "../auth/middleware";
 import { redirect } from "next/navigation";
 import { createClient } from "./server";
 import config from "../../config";
-import { evalManifestWithRetries } from "next/dist/server/load-components";
 
 const signInSchema = z.object({
   email: z.string().email().min(3).max(255),
@@ -125,31 +124,15 @@ export const signOut = async () => {
   const supabase = await createClient();
   await supabase.auth.signOut();
 };
-
-export const basicMagicLink = async (prev: any, formData: any) => {
-
-    const supabase = await createClient();
-    console.log(supabase, 'supabase')
-    const { data, error } = await supabase.auth.signInWithOtp({
-        email: formData.get('email'),
-        options: {
-          // set this to false if you do not want the user to be automatically signed up
-          shouldCreateUser: false,
-          emailRedirectTo: process.env.SITE_URL,
-        },
-      })
-}
-
 export const signinWithTheMagicLink = async (prev: any, formData: any) => {
     const supabase = await createClient()
   
     const { data, error } = await supabase.auth.signInWithOtp({
       email: formData.get('email'),
-      // options: {
-      //   // set this to false if you do not want the user to be automatically signed up
-      //   shouldCreateUser: false,
-      //   emailRedirectTo: 'https://localhost:3000',
-      // },
+      options: {
+        shouldCreateUser: true,
+        emailRedirectTo: process.env.SITE_URL,
+      },
     })
   
     if (error) {
