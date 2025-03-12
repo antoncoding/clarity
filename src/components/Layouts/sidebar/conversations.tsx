@@ -159,13 +159,6 @@ export function ConversationsList({ isExpanded, onConversationClick }: Conversat
     };
   }, [supabase]);
 
-  // Handle conversation click
-  const handleConversationClick = (id: string) => {
-    setSelectedConversationId(id);
-    if (isMobile) {
-      setIsOpen(false); // Close sidebar on mobile
-    }
-  };
 
   // Create a new conversation
   const createNewChat = () => {
@@ -189,7 +182,6 @@ export function ConversationsList({ isExpanded, onConversationClick }: Conversat
               "flex items-center gap-3 py-1 text-xs font-normal",
               !isExpanded && "justify-center px-0"
             )}
-            as="button"
             onClick={createNewChat}
             isActive={pathname === "/"}
           >

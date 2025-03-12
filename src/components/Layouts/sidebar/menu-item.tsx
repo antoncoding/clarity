@@ -29,14 +29,10 @@ interface MenuItemProps {
 export function MenuItem({
   children,
   className,
-  as = "button",
-  href,
   isActive,
   onClick,
   ...props
 }: MenuItemProps) {
-  const { toggleSidebar, isMobile } = useSidebarContext();
-
   const itemClasses = cn(
     menuItemBaseStyles({
       isActive: isActive,
@@ -44,19 +40,6 @@ export function MenuItem({
     }),
     className,
   );
-
-  if (as === "link") {
-    return (
-      <Link
-        href={href || "#"}
-        onClick={onClick}
-        className={itemClasses}
-        {...props}
-      >
-        {children}
-      </Link>
-    );
-  }
 
   return (
     <button

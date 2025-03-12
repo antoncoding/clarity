@@ -1,11 +1,11 @@
 import { OpenAIEmbeddings } from "@langchain/openai";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { ChatAnthropic } from "@langchain/anthropic";
-import { TavilySearchResults } from "@langchain/community/tools/tavily_search";
+// import { TavilySearchResults } from "@langchain/community/tools/tavily_search";
 import { WikipediaQueryRun } from "@langchain/community/tools/wikipedia_query_run";
 import { CustomDuckDuckGoSearch } from "../tools/duckduckgo";
 
-// @ts-ignore
+// @ts-expect-error
 import { WebBrowser } from "langchain/tools/webbrowser";
 
 
@@ -16,11 +16,11 @@ const websearchModal = new ChatAnthropic({
 
 const embeddings = new OpenAIEmbeddings();
 
-// Define a news search tool using Tavily
-const searchNewsTavily = new TavilySearchResults({
-    maxResults: 2,
-    apiKey: process.env.TAVILY_API_KEY,
-  });
+// // Define a news search tool using Tavily
+// const searchNewsTavily = new TavilySearchResults({
+//     maxResults: 2,
+//     apiKey: process.env.TAVILY_API_KEY,
+//   });
 
 const websearchTool = new WebBrowser({
     model: websearchModal,
