@@ -12,8 +12,8 @@ import type { PropsWithChildren } from "react";
 import { Providers } from "../providers";
 
 export const metadata: Metadata = {
-  title: "News Agent",
-  description: "Interactive news agent chat interface",
+  title: "TNDR",
+  description: "Too much news, don't read",
 };
 
 export default function RootLayout({ children }: PropsWithChildren) {

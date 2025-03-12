@@ -1,4 +1,4 @@
--- Complete Schema for News Agent (March 11, 2025)
+-- Complete Schema for Clarity (March 11, 2025)
 -- This creates the complete schema with all latest changes
 
 -- Create conversations table

@@ -63,6 +63,39 @@
   .inbox-height {
     @apply h-[calc(100vh_-_8.125rem)] lg:h-[calc(100vh_-_5.625rem)];
   }
+
+  /* Chat message animations */
+  .animate-message {
+    animation: message-appear 300ms ease-out forwards;
+  }
+
+  .animate-message-content {
+    opacity: 0;
+    transform: translateY(10px);
+    animation: message-content-appear 300ms ease-out forwards;
+  }
+
+  @keyframes message-appear {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes message-content-appear {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 }
 
 /* third-party libraries CSS */
@@ -497,4 +530,13 @@ input[type="search"]::-webkit-search-cancel-button {
 
 .custom-gradient-1 {
   background-image: linear-gradient(145deg, #eef 0%, #fff8fc 100%);
+}
+
+/* Add this to your existing CSS file */
+#nprogress .bar {
+  background: #3c50e0 !important; /* Your desired color */
+}
+
+#nprogress .peg {
+  box-shadow: 0 0 10px #3c50e0, 0 0 5px #3c50e0 !important;
 }

@@ -27,15 +27,6 @@ export function NewMessageInterface({ onSendMessage }: NewMessageInterfaceProps)
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // If Enter is pressed without Shift, submit the form
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault(); // Prevent default behavior (new line)
-      handleSubmit(e as unknown as React.FormEvent);
-    }
-    // Shift+Enter will still create a new line (default behavior)
-  };
-
   const sendSuggestion = (suggestion: string) => {
     if (!isLoading) {
       setInputValue(suggestion);
@@ -48,39 +39,33 @@ export function NewMessageInterface({ onSendMessage }: NewMessageInterfaceProps)
       <div className="w-full max-w-xl px-4">
         <div className="flex flex-col items-center mb-8">
           <h1 className="text-3xl font-bold mb-2 text-center text-primary-700 dark:text-primary-300">
-            News Assistant
+            Clarity
           </h1>
           <p className="text-center text-gray-600 dark:text-gray-400 mb-6">
             Ask about recent news events, trends, or any topic you're curious about
           </p>
         </div>
         
-        <form onSubmit={handleSubmit} className="w-full mb-6">
-          <div className="relative">
-            <textarea
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Type your message here... (Press Enter to send, Shift+Enter for new line)"
-              className="w-full px-4 py-3 h-24 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-800 dark:text-white resize-none"
-              disabled={isLoading}
-            />
-            <button
-              type="submit"
-              className={`absolute right-3 bottom-3 rounded-lg px-4 py-2 font-medium text-white ${
-                !inputValue.trim() || isLoading
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-primary-600 hover:bg-primary-700"
-              }`}
-              disabled={!inputValue.trim() || isLoading}
-            >
-              {isLoading ? (
-                <BounceLoader color="#ffffff" size={24} />
-              ) : (
-                "Ask"
-              )}
-            </button>
-          </div>
+        <form onSubmit={handleSubmit} className="flex space-x-2 mb-6">
+          <input
+            type="text"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            placeholder="Type your message..."
+            className="flex-1 border border-gray-300 dark:border-gray-700 rounded-md p-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+            disabled={isLoading}
+          />
+          <button
+            type="submit"
+            className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-md"
+            disabled={!inputValue.trim() || isLoading}
+          >
+            {isLoading ? (
+              <BounceLoader color="#0047AB" size={24} />
+            ) : (
+              "Send"
+            )}
+          </button>
         </form>
         
         <div className="flex flex-col items-center">

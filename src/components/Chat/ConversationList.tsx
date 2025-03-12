@@ -90,7 +90,7 @@ export function ConversationList({
         
         {isLoading ? (
           <div className="p-4 text-center text-gray-500 dark:text-gray-400">
-            <BounceLoader color="#8A63D2" size={40} className="mx-auto" />
+            <BounceLoader color="#0047AB" size={40} className="mx-auto" />
           </div>
         ) : conversations.length === 0 ? (
           <div className="p-4 text-center text-gray-500 dark:text-gray-400">

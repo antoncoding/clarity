@@ -86,7 +86,7 @@ export default function SigninWithPassword() {
         >
           Sign In
           {loading && (
-            <BounceLoader color="#ffffff" size={24} className="ml-2" />
+            <BounceLoader color="#0047AB" size={24} className="ml-2" />
           )}
         </button>
       </div>

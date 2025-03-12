@@ -20,31 +20,19 @@ const config: Config = {
         white: "#FFFFFF",
         // Purple-focused color palette
         primary: {
-          DEFAULT: "#8A63D2", // Main purple color
-          50: "#F5F1FB",
-          100: "#EAE2F7",
-          200: "#D6C5EF",
-          300: "#C1A8E7",
-          400: "#AD8BDF",
-          500: "#8A63D2", // Same as DEFAULT
-          600: "#7046C8",
-          700: "#5B33AE",
-          800: "#462788",
-          900: "#301B62",
+          DEFAULT: '#0047AB',
+          50: '#EDF6FA', 
+          100: '#DFF0F7', 
+          200: '#B0D5EB', 
+          300: '#85B9DE', 
+          400: '#3B80C4', 
+          500: '#0047AB', 
+          600: '#003D99', 
+          700: '#002F80', 
+          800: '#002266', 
+          900: '#00174D',
         },
-        secondary: {
-          DEFAULT: "#63A1D2", // Complementary blue
-          50: "#F1F7FB",
-          100: "#E2EFF7",
-          200: "#C5DFEF",
-          300: "#A8CFE7",
-          400: "#8BBFDF",
-          500: "#63A1D2",
-          600: "#4686C8",
-          700: "#336BAE",
-          800: "#275088",
-          900: "#1B3662",
-        },
+        
         accent: {
           DEFAULT: "#D26392", // Complementary pink
           50: "#FBF1F5",

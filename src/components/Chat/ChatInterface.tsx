@@ -1,10 +1,7 @@
 "use client";
 
-/* eslint-disable @typescript-eslint/no-unused-vars */
-
 import { useState, useRef, useEffect } from "react";
 import { v4 as uuidv4 } from 'uuid';
-import ReactMarkdown from "react-markdown";
 import { BounceLoader } from "react-spinners";
 import { useConversation } from "@/context/conversation-context";
 import { 
@@ -16,6 +13,53 @@ import {
   sendMessageToApi
 } from "@/utils/db";
 import { ToolResult } from "./ToolResult";
+import { MarkdownContent } from "./MarkdownContent";
+
+interface MessageProps {
+  content: string;
+  status?: string;
+  isProcessing?: boolean;
+  metadata?: any;
+  message_type?: string;
+}
+
+const UserMessage = ({ content }: MessageProps) => (
+  <div className="flex justify-end mb-4 animate-message">
+    <div className="p-3 rounded-lg max-w-[80%] bg-primary-50 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300 animate-message-content">
+      <div className="prose dark:prose-invert max-w-none font-light">
+        <MarkdownContent content={content} />
+      </div>
+    </div>
+  </div>
+);
+
+const AIMessage = ({ content, isProcessing, metadata, message_type }: MessageProps) => (
+  <div className="flex justify-start mb-4 animate-message">
+    <div className="p-3 rounded-lg max-w-[80%] bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white animate-message-content">
+      {isProcessing ? (
+        <div className="flex items-center">
+          <BounceLoader color="#0047AB" size={24} />
+          <span className="ml-2">Thinking...</span>
+        </div>
+      ) : (
+        <div className={`prose dark:prose-invert max-w-none ${
+          message_type === "tool_call" || message_type === "tool_result"
+            ? "text-gray-500 dark:text-gray-400 text-sm font-light italic"
+            : "font-light"
+        }`}>
+          {message_type === "tool_result" ? (
+            <ToolResult 
+              content={content}
+              metadata={metadata}
+            />
+          ) : (
+            <MarkdownContent content={content} />
+          )}
+        </div>
+      )}
+    </div>
+  </div>
+);
 
 export function ChatInterface() {
   const { selectedConversationId, setSelectedConversationId } = useConversation();
@@ -248,89 +292,32 @@ export function ChatInterface() {
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {isLoadingHistory ? (
           <div className="flex justify-center items-center h-full">
-            <BounceLoader color="#8A63D2" size={40} />
+            <BounceLoader color="#0047AB" size={40} />
           </div>
         ) : (
           <>
-            {messages.map((message, index) => (
-              <div 
-                key={message.id}
-                className={`flex ${
-                  message.sender === "user" ? "justify-end" : "justify-start"
-                } mb-4`}
-              >
-                <div
-                  className={`p-3 rounded-lg max-w-[80%] ${
-                    message.sender === "user"
-                      ? "bg-primary-500 text-white"
-                      : "bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white"
-                  }`}
-                >
-                  {message.status === "processing" && isAgentProcessing ? (
-                    <div className="flex items-center">
-                      <BounceLoader color="#888888" size={24} />
-                      <span className="ml-2">Thinking...</span>
-                    </div>
-                  ) : (
-                    <div className={`prose dark:prose-invert max-w-none ${
-                      message.sender === "agent" && (message.message_type === "tool_call" || message.message_type === "tool_result")
-                        ? "text-gray-500 dark:text-gray-400 text-sm font-light italic"
-                        : "font-light"
-                    }`}>
-                      {message.message_type === "tool_result" ? (
-                        <ToolResult 
-                          content={message.content}
-                          metadata={message.metadata}
-                        />
-                      ) : (
-                        <ReactMarkdown
-                          components={{
-                            // Replace strong (bold) with a lighter version
-                            strong: ({node, ...props}) => <span className="font-medium text-current" {...props} />,
-                            // Replace bullets with dashes
-                            ul: ({node, ...props}) => <ul className="list-none pl-3 space-y-1" {...props} />,
-                            li: ({node, children, ...props}) => <li className="relative pl-4 before:content-['-'] before:absolute before:left-0 before:text-gray-500 before:dark:text-gray-400" {...props}>{children}</li>,
-                            // Add additional styling for better readability with reduced spacing
-                            p: ({node, ...props}) => <p className="my-1 leading-normal" {...props} />,
-                            h1: ({node, ...props}) => <h1 className="text-xl font-normal my-2" {...props} />,
-                            h2: ({node, ...props}) => <h2 className="text-lg font-normal my-1.5" {...props} />,
-                            h3: ({node, ...props}) => <h3 className="text-base font-normal my-1" {...props} />,
-                            a: ({node, ...props}) => <a className="text-blue-500 hover:underline" {...props} />,
-                            // Improved code styling with reduced padding
-                            code: ({node, className, children, ...props}: any) => {
-                              return (
-                                <code 
-                                  className="font-mono text-sm bg-transparent px-1 py-0.5 text-primary-700 dark:text-primary-300 font-light"
-                                  {...props}
-                                >
-                                  {children}
-                                </code>
-                              );
-                            }
-                          }}
-                        >
-                          {message.content}
-                        </ReactMarkdown>
-                      )}
-                    
-                    </div>
-                  )}
-                </div>
-              </div>
+            {messages.map((message) => (
+              message.sender === "user" ? (
+                <UserMessage 
+                  key={message.id}
+                  content={message.content}
+                />
+              ) : (
+                <AIMessage
+                  key={message.id}
+                  content={message.content}
+                  status={message.status}
+                  isProcessing={message.status === "processing" && isAgentProcessing}
+                  metadata={message.metadata}
+                  message_type={message.message_type}
+                />
+              )
             ))}
             {isAgentProcessing && (
-              <div 
-                className="flex justify-start mb-4"
-              >
-                <div
-                  className={`p-3 rounded-lg max-w-[80%] bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white`}
-                >
-                  <div className="flex items-center">
-                    <BounceLoader color="#888888" size={24} />
-                    <span className="ml-2">Thinking...</span>
-                  </div>
-                </div>
-              </div>
+              <AIMessage
+                content=""
+                isProcessing={true}
+              />
             )}
             <div ref={messagesEndRef} />
           </>
@@ -354,7 +341,7 @@ export function ChatInterface() {
             disabled={isLoading || !inputValue.trim()}
           >
             {isLoading ? (
-              <BounceLoader color="#ffffff" size={24} />
+              <BounceLoader color="#0047AB" size={24} />
             ) : (
               "Send"
             )}

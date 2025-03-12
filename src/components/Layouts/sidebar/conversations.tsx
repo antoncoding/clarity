@@ -173,7 +173,7 @@ export function ConversationsList({
   };
 
   if (isLoading && conversations.length === 0) {
-    return <div className="px-2 py-1 text-xs text-gray-500"><BounceLoader color="#8A63D2" size={24} /></div>;
+    return <div className="px-2 py-1 text-xs text-gray-500"><BounceLoader color="#0047AB" size={24} /></div>;
   }
 
   return (

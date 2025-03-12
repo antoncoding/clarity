@@ -9,10 +9,10 @@ export function Logo({ compact = false }: LogoProps) {
   if (compact) {
     return (
       <Image
-        src="/images/logo/purple-circle.svg"
-        width={28}
-        height={28}
-        alt="News Agent Logo"
+        src="/images/logo/blue-circle.svg"
+        width={24}
+        height={24}
+        alt="Logo"
         priority
       />
     );
@@ -21,13 +21,13 @@ export function Logo({ compact = false }: LogoProps) {
   return (
     <div className="flex items-center gap-2">
       <Image
-        src="/images/logo/purple-circle.svg"
-        width={28}
-        height={28}
-        alt="News Agent Logo"
+        src="/images/logo/blue-circle.svg"
+        width={24}
+        height={24}
+        alt="Clarity Logo"
         priority
       />
-      <span className="text-sm font-bold text-dark dark:text-white">News Agent</span>
+      <span className="text-sm font-bold text-dark dark:text-white"> Clarity </span>
     </div>
   );
 }

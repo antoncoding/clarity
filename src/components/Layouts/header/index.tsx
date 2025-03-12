@@ -21,7 +21,7 @@ export function Header() {
         )}
 
         <h1 className="ml-2 text-heading-5 font-bold text-dark dark:text-white">
-          News Agent
+          Clarity
         </h1>
       </div>
 
