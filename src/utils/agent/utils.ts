@@ -37,7 +37,6 @@ export function extractMessageContent(content: any): string {
  */
 export function parseAgentMessages(rawMessages: (AIMessage | HumanMessage | ToolMessage)[]): AgentMessage[] {
   if (!Array.isArray(rawMessages) || rawMessages.length === 0) {
-    console.log('not array')
     return [];
   }
 
@@ -68,7 +67,6 @@ export function parseAgentMessages(rawMessages: (AIMessage | HumanMessage | Tool
       // Handle AI messages
       if (msg instanceof AIMessage) {
         // Get the content, handling both string and array formats
-        // console.log('Raw AI Message', JSON.stringify(msg, null, 2))
 
         const content = extractMessageContent(msg.content);
         
@@ -115,8 +113,6 @@ export function parseAgentMessages(rawMessages: (AIMessage | HumanMessage | Tool
       
       // Tool messages contain tool results
       if (msg instanceof ToolMessage) {
-
-        console.log('Raw Tool Message', JSON.stringify(msg, null, 2))
 
         return {
           type: 'tool_result' as const,

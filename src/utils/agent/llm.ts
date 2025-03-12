@@ -1,14 +1,31 @@
+import { OpenAIEmbeddings } from "@langchain/openai";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { ChatAnthropic } from "@langchain/anthropic";
 import { TavilySearchResults } from "@langchain/community/tools/tavily_search";
 import { WikipediaQueryRun } from "@langchain/community/tools/wikipedia_query_run";
 import { CustomDuckDuckGoSearch } from "../tools/duckduckgo";
 
+// @ts-ignore
+import { WebBrowser } from "langchain/tools/webbrowser";
+
+
+const websearchModal = new ChatAnthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+  model: "claude-3-5-haiku-latest"
+});
+
+const embeddings = new OpenAIEmbeddings();
+
 // Define a news search tool using Tavily
 const searchNewsTavily = new TavilySearchResults({
     maxResults: 2,
     apiKey: process.env.TAVILY_API_KEY,
   });
+
+const websearchTool = new WebBrowser({
+    model: websearchModal,
+    embeddings
+});
 
 const searchWikipedia = new WikipediaQueryRun({
     topKResults: 5,
@@ -35,7 +52,7 @@ export const getAgent = (conversationId: string) => {
     console.log(`🆕 Agent: Creating new agent for conversation ID: ${conversationId}`);
     
     // Define the tools for the agent to use
-    const tools = [searchNewsTavily, searchWikipedia, searchDuckDuckGo];
+    const tools = [searchWikipedia, searchDuckDuckGo, websearchTool];
     console.log(`🧰 Agent: Configured with ${tools.length} tools: ${tools.map(t => t.name).join(', ')}`);
     
     // Initialize the model

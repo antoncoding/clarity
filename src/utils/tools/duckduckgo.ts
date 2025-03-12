@@ -35,10 +35,10 @@ export class CustomDuckDuckGoSearch extends Tool {
   }
 
   static lc_name() {
-    return "CustomDuckDuckGoSearch";
+    return "DuckDuckGoSearch";
   }
 
-  name = "custom-duckduckgo-search";
+  name = "duckduckgo-search";
 
   description =
     "A search engine. Useful for when you need to answer questions about current events. Input should be a search query.";
