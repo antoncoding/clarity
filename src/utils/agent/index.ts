@@ -2,6 +2,7 @@ import { AGENT_MESSAGES, processAgentResponse } from "./utils";
 import { getAgent, mainSearchToolName } from "./llm";
 import { AIMessage, HumanMessage, ToolMessage } from "@langchain/core/messages";
 import { AgentDBService } from "./db";
+import { createAdminClient } from "../supabase/admin";
 
 // Re-export for backward compatibility
 export { AGENT_MESSAGES } from "./utils";
@@ -117,7 +118,10 @@ export const processMessage = async (
     
     // Store usage statistics in the database
     try {
-      const adminDbService = await AgentDBService.getInstance(true);
+      // Create a fresh service role client each time, bypassing the singleton
+      const client = createAdminClient()
+      const adminDbService = new AgentDBService(client); // Directly create instance
+      
       // Get user ID associated with the conversation
       const userId = await adminDbService.getConversationUserId(conversationId);
       

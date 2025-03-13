@@ -1,5 +1,4 @@
 import { createClient } from './supabase/client';
-import { v4 as uuidv4 } from 'uuid';
 
 // Message type for the chat interface
 export type Message = {

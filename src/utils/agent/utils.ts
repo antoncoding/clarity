@@ -40,7 +40,7 @@ const DEFAULT_MODEL = 'claude-3-5-haiku-latest';
 /**
  * Calculate cost based on token usage and model
  */
-export function calculateCost(inputTokens: number, outputTokens: number, model = DEFAULT_MODEL): number {
+export function calculateCost(inputTokens: number, outputTokens: number): number {
   const pricing = TOKEN_PRICING[DEFAULT_MODEL];
   
   const inputCost = (inputTokens / 1000000) * pricing.INPUT;

@@ -8,7 +8,7 @@ export class AgentDBService {
   private client: SupabaseClient;
   private static instance: AgentDBService;
   
-  private constructor(client: SupabaseClient) {
+  public constructor(client: SupabaseClient) {
     this.client = client;
   }
   
@@ -16,10 +16,20 @@ export class AgentDBService {
    * Get singleton instance of the database service
    */
   public static async getInstance(useServiceRole: boolean = false): Promise<AgentDBService> {
-    if (!AgentDBService.instance) {
+    // Don't reuse the instance when switching between service role and normal client
+    // This ensures we don't mix authentication contexts
+    if (useServiceRole || !AgentDBService.instance) {
       const client = await createClient({ useServiceRole });
-      AgentDBService.instance = new AgentDBService(client);
+      
+      if (useServiceRole) {
+        console.log('Creating new AgentDBService instance with SERVICE ROLE');
+        return new AgentDBService(client);
+      } else if (!AgentDBService.instance) {
+        console.log('Creating new AgentDBService instance with normal client');
+        AgentDBService.instance = new AgentDBService(client);
+      }
     }
+    
     return AgentDBService.instance;
   }
   
@@ -187,6 +197,10 @@ export class AgentDBService {
     cost: number
   ) {
     try {
+      // Log whether this is a service role client
+      console.log('updateConversationUsage using service role?', 
+        this.client.auth.admin ? 'YES' : 'NO');
+      
       // First, check if entry exists
       const { data: existingData, error: fetchError } = await this.client
         .from("conversation_usage")
@@ -201,43 +215,45 @@ export class AgentDBService {
       
       if (existingData) {
         // Update existing entry
+        const updateData = {
+          input_tokens: existingData.input_tokens + inputTokens,
+          output_tokens: existingData.output_tokens + outputTokens,
+          cost: existingData.cost + cost,
+          updated_at: new Date().toISOString()
+        };
+        
+        console.log('Updating conversation usage with data:', updateData);
+        console.log('For conversation_id:', conversationId);
+        
         const { error: updateError } = await this.client
           .from("conversation_usage")
-          .update({
-            input_tokens: existingData.input_tokens + inputTokens,
-            output_tokens: existingData.output_tokens + outputTokens,
-            cost: existingData.cost + cost,
-            updated_at: new Date().toISOString()
-          })
+          .update(updateData)
           .eq("conversation_id", conversationId);
           
         if (updateError) {
           console.error("Error updating conversation usage:", updateError);
+          console.error("Update payload:", updateData);
           return false;
         }
       } else {
-        console.log('Print all data weriting', {
+        // Create new entry
+        const insertData = {
           user_id: userId,
           conversation_id: conversationId,
           input_tokens: inputTokens,
           output_tokens: outputTokens,
           cost: cost,
           updated_at: new Date().toISOString()
-        })
-        // Create new entry
+        };
+        
+        console.log('Inserting new conversation usage with data:', insertData);
         const { error: insertError } = await this.client
           .from("conversation_usage")
-          .insert({
-            user_id: userId,
-            conversation_id: conversationId,
-            input_tokens: inputTokens,
-            output_tokens: outputTokens,
-            cost: cost,
-            updated_at: new Date().toISOString()
-          });
+          .insert(insertData);
           
         if (insertError) {
           console.error("Error inserting conversation usage:", insertError);
+          console.error("Insert payload:", insertData);
           return false;
         }
       }
@@ -257,6 +273,10 @@ export class AgentDBService {
     cost: number
   ) {
     try {
+      // Log whether this is a service role client
+      console.log('updateUserUsage using service role?', 
+        this.client.auth.admin ? 'YES' : 'NO');
+      
       // First, check if entry exists
       const { data: existingData, error: fetchError } = await this.client
         .from("user_accounts")
@@ -271,30 +291,42 @@ export class AgentDBService {
       
       if (existingData) {
         // Update existing entry
+        const updateData = {
+          lifetime_usage_cost: existingData.lifetime_usage_cost + cost,
+          updated_at: new Date().toISOString()
+        };
+        
+        console.log('Updating user usage with data:', updateData);
+        console.log('For user_id:', userId);
+        
         const { error: updateError } = await this.client
           .from("user_accounts")
-          .update({
-            lifetime_usage_cost: existingData.lifetime_usage_cost + cost,
-            updated_at: new Date().toISOString()
-          })
+          .update(updateData)
           .eq("user_id", userId);
           
         if (updateError) {
           console.error("Error updating user usage:", updateError);
+          console.error("Update payload:", updateData);
           return false;
         }
       } else {
         // Create new entry
+        const insertData = {
+          user_id: userId,
+          lifetime_usage_cost: cost,
+          updated_at: new Date().toISOString()
+        };
+        
+        console.log('Inserting new user usage with data:', insertData);
+        
+        
         const { error: insertError } = await this.client
           .from("user_accounts")
-          .insert({
-            user_id: userId,
-            lifetime_usage_cost: cost,
-            updated_at: new Date().toISOString()
-          });
+          .insert(insertData);
           
         if (insertError) {
           console.error("Error inserting user usage:", insertError);
+          console.error("Insert payload:", insertData);
           return false;
         }
       }
