@@ -22,10 +22,8 @@ export class AgentDBService {
       const client = await createClient({ useServiceRole });
       
       if (useServiceRole) {
-        console.log('Creating new AgentDBService instance with SERVICE ROLE');
         return new AgentDBService(client);
       } else if (!AgentDBService.instance) {
-        console.log('Creating new AgentDBService instance with normal client');
         AgentDBService.instance = new AgentDBService(client);
       }
     }
@@ -197,9 +195,6 @@ export class AgentDBService {
     cost: number
   ) {
     try {
-      // Log whether this is a service role client
-      console.log('updateConversationUsage using service role?', 
-        this.client.auth.admin ? 'YES' : 'NO');
       
       // First, check if entry exists
       const { data: existingData, error: fetchError } = await this.client
@@ -246,7 +241,6 @@ export class AgentDBService {
           updated_at: new Date().toISOString()
         };
         
-        console.log('Inserting new conversation usage with data:', insertData);
         const { error: insertError } = await this.client
           .from("conversation_usage")
           .insert(insertData);
@@ -273,10 +267,6 @@ export class AgentDBService {
     cost: number
   ) {
     try {
-      // Log whether this is a service role client
-      console.log('updateUserUsage using service role?', 
-        this.client.auth.admin ? 'YES' : 'NO');
-      
       // First, check if entry exists
       const { data: existingData, error: fetchError } = await this.client
         .from("user_accounts")
@@ -296,9 +286,6 @@ export class AgentDBService {
           updated_at: new Date().toISOString()
         };
         
-        console.log('Updating user usage with data:', updateData);
-        console.log('For user_id:', userId);
-        
         const { error: updateError } = await this.client
           .from("user_accounts")
           .update(updateData)
@@ -316,9 +303,6 @@ export class AgentDBService {
           lifetime_usage_cost: cost,
           updated_at: new Date().toISOString()
         };
-        
-        console.log('Inserting new user usage with data:', insertData);
-        
         
         const { error: insertError } = await this.client
           .from("user_accounts")

@@ -4,7 +4,7 @@ import { ChatAnthropic } from "@langchain/anthropic";
 import { WikipediaQueryRun } from "@langchain/community/tools/wikipedia_query_run";
 import { CustomDuckDuckGoSearch } from "../tools/duckduckgo";
 import { BraveSearch } from "@langchain/community/tools/brave_search";
-
+import { determineLanguage } from "../tools/determine_language";
 // @ts-expect-error no types for webbrowser
 import { WebBrowser } from "langchain/tools/webbrowser";
 
@@ -53,7 +53,7 @@ export const getAgent = (conversationId: string) => {
     console.log(`🆕 Agent: Creating new agent for conversation ID: ${conversationId}`);
     
     // Define the tools for the agent to use
-    const tools = [searchWikipedia, websearchTool, mainSearchToUse];
+    const tools = [searchWikipedia, websearchTool, mainSearchToUse, determineLanguage];
     console.log(`🧰 Agent: Configured with ${tools.length} tools: ${tools.map(t => t.name).join(', ')}`);
     
     // Initialize the model

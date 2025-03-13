@@ -144,14 +144,23 @@ export function parseAgentMessages(rawMessages: (AIMessage | HumanMessage | Tool
       
       // Tool messages contain tool results
       if (msg instanceof ToolMessage) {
-        console.log("AI message whole", msg)
+        let usage_metadata = {}
+        if (msg.name === "determine_search_language") {
+          try {
+            const data = JSON.parse(msg.content as string)
+            usage_metadata = data.usage_metadata
+          } catch (e) {
+            console.error("Error parsing determine_search_language", e)
+          }
+        }
 
         return {
           type: 'tool_result' as const,
           content: msg.content as string,
           metadata: {
             tool_call_id: msg.tool_call_id,
-            name: msg.name
+            name: msg.name,
+            usage_metadata
           }
         };
       }
