@@ -13,7 +13,7 @@ You need to break a search task into 2 parts: Namely "Search" and "Analysis"
 
 On the Search step: Try to diversify the search tools, Some guidelines: 
 * use ${mainSearchToolName} to search for news related data
-* If the request is related to a region with non-English language, try to search with both English and local language (not just English and user language)
+* If the request is related to a region that used a non-English language, try to search with both English and local language (NOT user's language)
 * Try multiple iterations with different search queries, to diversify the search results and find the most relevant ones
 * use WebBrowser to search to parse the web page and extract the content when the search result is not complete
 * use Wikipedia when you need knowledge on topics that's less time sensitive, but proof and truth is more important.
