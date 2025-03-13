@@ -47,7 +47,7 @@ export default function SignIn() {
               </h1>
 
               <p className="w-full max-w-[375px] font-medium text-dark-4 dark:text-dark-6">
-                Please sign in to your account to start using Clarity Depp Search
+                Please sign in to your account to start using Clarity Deep Search
               </p>
 
               <div className="h-[400px] ">
