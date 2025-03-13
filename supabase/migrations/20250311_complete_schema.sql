@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS messages (
   conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
   content TEXT NOT NULL,
   sender TEXT NOT NULL CHECK (sender IN ('user', 'agent')),
-  status TEXT NOT NULL DEFAULT 'sent' CHECK (status IN ('sent', 'processing', 'completed', 'error')),
+  status TEXT NOT NULL DEFAULT 'sent' CHECK (status IN ('sent', 'processing', 'completed', 'responded', 'error')),
   metadata JSONB, -- Stores tool usage history, execution steps, and other execution metadata
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()

@@ -125,10 +125,7 @@ async function processAgentMessage(
     console.log(`🤖 Processing agent response for message: ${userMessageId}`);
     
     // Call the agent to process the message using the correct API
-    const agentResult = await processMessage(conversationId, userMessage);
-    
-    // Extract the final response and all intermediate messages
-    const { response, messages } = agentResult;
+    const { response, messages } = await processMessage(conversationId, userMessage);
     
     console.log(`✅ Agent received response of length: ${response.length}`);
     console.log(`📊 Agent generated ${messages.length} total messages`);
@@ -156,6 +153,17 @@ async function processAgentMessage(
         console.error("❌ Error inserting agent messages:", insertError);
         // Don't throw here - we've already updated the main message
       }
+
+      // change the user message status to responded
+      const { error: updateError } = await adminClient
+        .from("messages")
+        .update({ status: "responded" })
+        .eq("id", userMessageId);
+
+      if (updateError) {
+        console.error("❌ Error updating user message status:", updateError);
+      }
+        
     }
 
     console.log(`✅ Agent response completed for message: ${userMessageId}`);

@@ -147,8 +147,9 @@ export function ChatInterface() {
           return prev;
         }
         
-        // If we receive any completed message from the agent, we can clear the thinking status
-        if (newMessage.sender === 'agent' && newMessage.status === 'completed') {
+        // If we receive any completed or responded message from the agent, we can clear the thinking status
+        if (newMessage.sender === 'agent' && 
+            (newMessage.status === 'completed' || newMessage.status === 'responded')) {
           setIsAgentProcessing(false);
         }
         
@@ -159,7 +160,7 @@ export function ChatInterface() {
             id: newMessage.id,
             content: newMessage.content,
             sender: newMessage.sender as "user" | "agent",
-            status: newMessage.status as "sent" | "processing" | "completed" | "error",
+            status: newMessage.status as "sent" | "processing" | "completed" | "error" | "responded",
             timestamp: new Date(newMessage.created_at),
             metadata: newMessage.metadata,
             message_type: newMessage.message_type
@@ -171,9 +172,9 @@ export function ChatInterface() {
     const handleUpdate = (updatedMessage: MessageRow) => {
       console.log('Message updated:', updatedMessage);
       
-      // If the status changed from processing to completed, log it
-      if (updatedMessage.status === "completed") {
-        console.log("✅ Agent response completed for message:", updatedMessage.id);
+      // If the status changed from processing to completed or responded, log it
+      if (updatedMessage.status === "completed" || updatedMessage.status === "responded") {
+        console.log(`✅ Agent response ${updatedMessage.status} for message:`, updatedMessage.id);
         setIsAgentProcessing(false);
       }
       
@@ -185,7 +186,7 @@ export function ChatInterface() {
             return {
               ...msg,
               content: updatedMessage.content,
-              status: updatedMessage.status as "sent" | "processing" | "completed" | "error",
+              status: updatedMessage.status as "sent" | "processing" | "completed" | "error" | "responded",
               metadata: updatedMessage.metadata,
               message_type: updatedMessage.message_type
             };
@@ -207,6 +208,26 @@ export function ChatInterface() {
       unsubscribe();
     };
   }, [selectedConversationId]);
+
+  // Check if we should show the thinking indicator
+  useEffect(() => {
+    if (messages.length === 0) {
+      setIsAgentProcessing(false);
+      return;
+    }
+    
+    // Get the latest message
+    const latestMessage = messages[messages.length - 1];
+    
+    // If the latest message is from the user and has "sent" status, show thinking indicator
+    if (latestMessage.sender === "user" && latestMessage.status === "sent") {
+      setIsAgentProcessing(true);
+    } else if (latestMessage.sender === "agent" && 
+              (latestMessage.status === "completed" || latestMessage.status === "responded")) {
+      // If the latest message is from the agent and is completed or responded, hide thinking indicator
+      setIsAgentProcessing(false);
+    }
+  }, [messages]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -307,7 +328,7 @@ export function ChatInterface() {
                   key={message.id}
                   content={message.content}
                   status={message.status}
-                  isProcessing={message.status === "processing" && isAgentProcessing}
+                  isProcessing={message.status === "processing"}
                   metadata={message.metadata}
                   message_type={message.message_type}
                 />

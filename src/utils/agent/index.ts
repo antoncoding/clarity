@@ -18,7 +18,6 @@ On the Search step: Try to diversify the search tools, Some guidelines:
 * use WebBrowser to search to parse the web page and extract the content when the search result is not ccomplete
 * use Wikipedia when you need knowledge on topics that's less time sensitive, but proof and truth is more important.
 
-
 On the Analysis step: Try to
 * If the request is time sensitive (refer to a specific time frame like last week, or recently), make sure the data you receive is up to date, and ignore the old news
 * Breakdown each news source and filter out the underlying ideology. Try to find the common ground across multiple sources.

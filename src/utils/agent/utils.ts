@@ -142,7 +142,6 @@ export function processAgentResponse(messages: (HumanMessage | AIMessage | ToolM
   }
   
   const processedMessages = parseAgentMessages(messages);
-  console.log('processedMessages in process agent response', processedMessages.length)
   
   // The final response is the last message of type 'message'
   const finalResponse = processedMessages

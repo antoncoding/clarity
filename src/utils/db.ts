@@ -6,7 +6,7 @@ export type Message = {
   id: string;
   content: string;
   sender: "user" | "agent";
-  status: "sent" | "processing" | "completed" | "error";
+  status: "sent" | "processing" | "completed" | "error" | "responded";
   timestamp: Date;
   metadata?: {
     toolUsageHistory?: Array<{
@@ -36,7 +36,7 @@ export type MessageRow = {
   conversation_id: string;
   content: string;
   sender: 'user' | 'agent';
-  status: 'sent' | 'processing' | 'completed' | 'error';
+  status: 'sent' | 'processing' | 'completed' | 'error' | 'responded';
   created_at: string;
   updated_at: string;
   user_id?: string;
