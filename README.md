@@ -29,53 +29,9 @@ pnpm install
 ### 2. Supabase Setup
 
 1. Create a new Supabase project at [supabase.com](https://supabase.com)
-2. Set up the required database tables:
-
-```sql
--- Create conversations table
-CREATE TABLE conversations (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES auth.users(id) NOT NULL,
-  title TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Create messages table
-CREATE TABLE messages (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  conversation_id UUID REFERENCES conversations(id) NOT NULL,
-  sender TEXT NOT NULL,
-  content TEXT NOT NULL,
-  message_type TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Set up Row Level Security
-ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
-
--- Create policies
-CREATE POLICY "Users can view their own conversations" 
-  ON conversations FOR SELECT 
-  USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert their own conversations" 
-  ON conversations FOR INSERT 
-  WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can view messages in their conversations" 
-  ON messages FOR SELECT 
-  USING (conversation_id IN (
-    SELECT id FROM conversations WHERE user_id = auth.uid()
-  ));
-
-CREATE POLICY "Users can insert messages in their conversations" 
-  ON messages FOR INSERT 
-  WITH CHECK (conversation_id IN (
-    SELECT id FROM conversations WHERE user_id = auth.uid()
-  ));
-```
+2. Set up the database schema:
+   - Use the migration file in `supabase/migrations/schema.sql` to create all required tables
+   - You can run this in the Supabase SQL Editor
 
 3. Configure Authentication:
    - Go to Authentication → Providers
