@@ -1,4 +1,4 @@
-# News AI Agent
+# Clarity Deep Search
 
 An open-source AI-powered news research assistant that helps you find, analyze, and understand current events through natural conversation.
 
