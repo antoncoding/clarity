@@ -1,8 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createClient } from "@/utils/supabase/server";
-import { createAdminClient } from "@/utils/supabase/admin";
 import { withAuth } from "@/utils/api-middleware";
 import { processMessage } from "@/utils/agent";
+import { AgentDBService } from "@/utils/agent/db";
 
 // Handle the POST request for sending messages
 export const POST = withAuth(async (req: NextRequest, userId: string) => {
@@ -20,42 +19,30 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       );
     }
 
-    const supabase = await createClient();
-    // Use admin client for operations that need to bypass RLS
-    const adminClient = createAdminClient();
+    // Initialize the database service
+    const dbService = await AgentDBService.getInstance();
 
     // Create a new conversation if one doesn't exist
     let actualConversationId = conversationId;
     if (!actualConversationId) {
       console.log("🔄 Creating new conversation");
       
-      // Create a new conversation in the database using admin client to bypass RLS
-      const { data: newConversation, error: conversationError } = await adminClient
-        .from("conversations")
-        .insert([{ user_id: userId, title: message.substring(0, 50) }])
-        .select("id")
-        .single();
-
-      if (conversationError || !newConversation) {
-        console.error("❌ Error creating conversation:", conversationError);
-        return NextResponse.json(
-          { error: "Error creating conversation" },
-          { status: 500 }
-        );
-      }
+      // Create a new conversation in the database
+      const newConversation = await dbService.createConversation(
+        userId, 
+        message.substring(0, 50)
+      );
 
       actualConversationId = newConversation.id;
       console.log(`✅ New conversation created: ${actualConversationId}`);
     } else {
       // Verify the user owns this conversation
-      const { data: conversationData, error: conversationError } = await supabase
-        .from("conversations")
-        .select("id")
-        .eq("id", actualConversationId)
-        .eq("user_id", userId)
-        .single();
+      const isOwner = await dbService.verifyConversationOwnership(
+        actualConversationId,
+        userId
+      );
         
-      if (conversationError || !conversationData) {
+      if (!isOwner) {
         console.error("❌ Conversation not found or not owned by user");
         return NextResponse.json(
           { error: "Conversation not found" },
@@ -64,30 +51,15 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       }
     }
 
-    // Add the message to the database using admin client to bypass RLS
-    const { data: messageData, error: messageError } = await adminClient
-      .from("messages")
-      .insert([
-        {
-          conversation_id: actualConversationId,
-          content: message,
-          sender: "user",
-          status: "sent",
-        },
-      ])
-      .select("id")
-      .single();
-
-    if (messageError || !messageData) {
-      console.error("❌ Error inserting message:", messageError);
-      return NextResponse.json(
-        { error: "Error sending message" },
-        { status: 500 }
-      );
-    }
+    // Add the message to the database
+    const messageData = await dbService.insertMessage(
+      actualConversationId,
+      message,
+      "user",
+      "sent"
+    );
 
     console.log(`✅ User message inserted: ${messageData.id}`);
-
 
     // Invoke agent asynchronously
     processAgentMessage(
@@ -118,14 +90,14 @@ async function processAgentMessage(
   userMessageId: string,
   conversationId: string
 ) {
-  // Use admin client for updating messages
-  const adminClient = createAdminClient();
+  // Initialize the database service
+  const dbService = await AgentDBService.getInstance();
 
   try {
     console.log(`🤖 Processing agent response for message: ${userMessageId}`);
     
-    // Call the agent to process the message using the correct API
-    const { response, messages } = await processMessage(conversationId, userMessage);
+    // Call the agent to process the message
+    const { response, messages } = await processMessage(userMessageId, conversationId, userMessage);
     
     console.log(`✅ Agent received response of length: ${response.length}`);
     console.log(`📊 Agent generated ${messages.length} total messages`);
@@ -145,30 +117,14 @@ async function processAgentMessage(
       }));
       
       // Insert all messages
-      const { error: insertError } = await adminClient
-        .from("messages")
-        .insert(messagesToInsert);
-        
-      if (insertError) {
-        console.error("❌ Error inserting agent messages:", insertError);
-        // Don't throw here - we've already updated the main message
-      }
+      await dbService.insertAgentMessages(messagesToInsert);
 
       // change the user message status to responded
-      const { error: updateError } = await adminClient
-        .from("messages")
-        .update({ status: "responded" })
-        .eq("id", userMessageId);
-
-      if (updateError) {
-        console.error("❌ Error updating user message status:", updateError);
-      }
-        
+      await dbService.updateMessageStatus(userMessageId, "responded");
     }
 
     console.log(`✅ Agent response completed for message: ${userMessageId}`);
   } catch (error) {
     console.error("❌ Error in agent processing:", error);
-    
   }
 }

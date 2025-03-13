@@ -10,12 +10,44 @@ export interface AgentMessage {
 export interface ParsedAgentResponse {
   response: string;
   messages: AgentMessage[];
+  input_tokens: number;
+  output_tokens: number;
+  cost: number;
 }
 
 // Constants
 export const AGENT_MESSAGES = {
   ERROR: "I encountered an error while processing your request. Please try again."
 };
+
+// Token pricing in USD per 1M tokens for Claude models
+export const TOKEN_PRICING = {
+  // Claude 3.5 Haiku
+  'claude-3-5-haiku-latest': {
+    INPUT: 0.80,  // $0.80 per 1M input tokens
+    OUTPUT: 4.00  // $4.00 per 1M output tokens
+  },
+  // Claude 3.5 Sonnet
+  'claude-3-5-sonnet-latest': {
+    INPUT: 3.00,  // $3.00 per 1M input tokens
+    OUTPUT: 15.00  // $15.00 per 1M output tokens
+  }
+};
+
+// Get currently used model from the llm configuration
+const DEFAULT_MODEL = 'claude-3-5-haiku-latest';
+
+/**
+ * Calculate cost based on token usage and model
+ */
+export function calculateCost(inputTokens: number, outputTokens: number, model = DEFAULT_MODEL): number {
+  const pricing = TOKEN_PRICING[DEFAULT_MODEL];
+  
+  const inputCost = (inputTokens / 1000000) * pricing.INPUT;
+  const outputCost = (outputTokens / 1000000) * pricing.OUTPUT;
+  
+  return parseFloat((inputCost + outputCost).toFixed(6));
+}
 
 /**
  * Extract content from a message, handling different content formats
@@ -67,7 +99,6 @@ export function parseAgentMessages(rawMessages: (AIMessage | HumanMessage | Tool
       // Handle AI messages
       if (msg instanceof AIMessage) {
         // Get the content, handling both string and array formats
-
         const content = extractMessageContent(msg.content);
         
         // Skip temporary processing messages
@@ -113,6 +144,7 @@ export function parseAgentMessages(rawMessages: (AIMessage | HumanMessage | Tool
       
       // Tool messages contain tool results
       if (msg instanceof ToolMessage) {
+        console.log("AI message whole", msg)
 
         return {
           type: 'tool_result' as const,
@@ -133,11 +165,13 @@ export function parseAgentMessages(rawMessages: (AIMessage | HumanMessage | Tool
  * Process agent response to extract final response and structured messages
  */
 export function processAgentResponse(messages: (HumanMessage | AIMessage | ToolMessage)[]): ParsedAgentResponse {
-
   if (!messages) {
     return {
       response: AGENT_MESSAGES.ERROR,
-      messages: []
+      messages: [],
+      input_tokens: 0,
+      output_tokens: 0,
+      cost: 0
     };
   }
   
@@ -148,8 +182,25 @@ export function processAgentResponse(messages: (HumanMessage | AIMessage | ToolM
     .filter((msg) => msg.type === 'message')
     .pop()?.content || AGENT_MESSAGES.ERROR;
   
+  // Calculate token usage from message metadata
+  let inputTokens = 0;
+  let outputTokens = 0;
+  
+  processedMessages.forEach(msg => {
+    if (msg.metadata?.usage_metadata) {
+      inputTokens += msg.metadata.usage_metadata.input_tokens || 0;
+      outputTokens += msg.metadata.usage_metadata.output_tokens || 0;
+    }
+  });
+  
+  // Calculate cost based on token usage
+  const cost = calculateCost(inputTokens, outputTokens);
+  
   return {
     response: finalResponse,
-    messages: processedMessages
+    messages: processedMessages,
+    input_tokens: inputTokens,
+    output_tokens: outputTokens,
+    cost
   };
 }

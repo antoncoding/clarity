@@ -1,8 +1,14 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { createAdminClient } from './admin'
 
-export async function createClient() {
+export async function createClient({ useServiceRole = false } = {}) {
+
   const cookieStore = await cookies()
+
+  if (useServiceRole) {
+    return createAdminClient()
+  }
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

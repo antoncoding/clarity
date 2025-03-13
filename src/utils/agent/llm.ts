@@ -57,10 +57,10 @@ export const getAgent = (conversationId: string) => {
     console.log(`🧰 Agent: Configured with ${tools.length} tools: ${tools.map(t => t.name).join(', ')}`);
     
     // Initialize the model
-    console.log(`🧠 Agent: Initializing Claude 3.5 Sonnet model`);
+    console.log(`🧠 Agent: Initializing Claude 3.5 Haiku model`);
     const model = new ChatAnthropic({
       apiKey: process.env.ANTHROPIC_API_KEY,
-      model: "claude-3-5-sonnet-latest"
+      model: "claude-3-5-haiku-latest"
     });
   
     // Initialize memory to persist state between graph runs

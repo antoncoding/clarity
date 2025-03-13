@@ -52,6 +52,16 @@ export type Conversation = {
   user_id?: string;
 };
 
+// Usage statistics type
+export type UsageStats = {
+  id: string;
+  conversation_id: string;
+  input_tokens: number;
+  output_tokens: number;
+  cost: number;
+  timestamp: string;
+};
+
 /**
  * Creates a new conversation
  */
@@ -82,60 +92,6 @@ export async function createConversation(title?: string): Promise<Conversation> 
   }
   
   return data;
-}
-
-/**
- * Creates a new message in a conversation
- */
-export async function createMessage(conversationId: string, content: string, sender: "user" | "agent", status: "sent" | "processing" | "completed" | "error" = "sent", message_type?: 'message' | 'thought' | 'tool_call' | 'tool_result' | 'error'): Promise<MessageRow> {
-  const supabase = createClient();
-  
-  // Get the current user to include user_id
-  const { data: userData } = await supabase.auth.getUser();
-  if (!userData?.user) {
-    throw new Error("You must be logged in to send a message");
-  }
-  
-  const messageId = uuidv4();
-  
-  const { data, error } = await supabase
-    .from("messages")
-    .insert([{
-      id: messageId,
-      conversation_id: conversationId,
-      content,
-      sender,
-      status,
-      message_type
-    }])
-    .select()
-    .single();
-    
-  if (error) {
-    console.error("Error creating message:", error);
-    throw new Error(`Error creating message: ${error.message}`);
-  }
-  
-  return data;
-}
-
-/**
- * Fetches all conversations for the current user
- */
-export async function getConversations(): Promise<Conversation[]> {
-  const supabase = createClient();
-  
-  const { data, error } = await supabase
-    .from("conversations")
-    .select("*")
-    .order("created_at", { ascending: false });
-    
-  if (error) {
-    console.error("Error fetching conversations:", error);
-    throw new Error(`Error fetching conversations: ${error.message}`);
-  }
-  
-  return data || [];
 }
 
 /**
@@ -315,4 +271,82 @@ export async function sendMessageToApi(messageContent: string, conversationId: s
     console.error("Error calling chat API:", error);
     throw error;
   }
+}
+
+/**
+ * Gets usage statistics for a conversation
+ */
+export async function getConversationUsageStats(conversationId: string): Promise<UsageStats[]> {
+  const supabase = createClient();
+  
+  const { data, error } = await supabase
+    .from("usage_stats")
+    .select("*")
+    .eq("conversation_id", conversationId)
+    .order("timestamp", { ascending: true });
+    
+  if (error) {
+    console.error(`Error fetching usage stats for conversation ${conversationId}:`, error);
+    throw new Error(`Error fetching usage stats: ${error.message}`);
+  }
+  
+  return data || [];
+}
+
+/**
+ * Gets total usage statistics for a user
+ */
+export async function getUserUsageStats(): Promise<{
+  total_input_tokens: number;
+  total_output_tokens: number;
+  total_cost: number;
+  conversations_count: number;
+}> {
+  const supabase = createClient();
+  
+  // Get the current user
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData?.user) {
+    throw new Error("You must be logged in to access usage statistics");
+  }
+  
+  // Get all conversation IDs for this user
+  const { data: conversations, error: convError } = await supabase
+    .from("conversations")
+    .select("id")
+    .eq("user_id", userData.user.id);
+    
+  if (convError) {
+    console.error("Error fetching user conversations:", convError);
+    throw new Error(`Error fetching user conversations: ${convError.message}`);
+  }
+  
+  const conversationIds = conversations.map(c => c.id);
+  
+  if (conversationIds.length === 0) {
+    return {
+      total_input_tokens: 0,
+      total_output_tokens: 0,
+      total_cost: 0,
+      conversations_count: 0
+    };
+  }
+  
+  // Get usage stats for these conversations
+  const { data: stats, error: statsError } = await supabase
+    .from("usage_stats")
+    .select("input_tokens, output_tokens, cost")
+    .in("conversation_id", conversationIds);
+    
+  if (statsError) {
+    console.error("Error fetching usage statistics:", statsError);
+    throw new Error(`Error fetching usage statistics: ${statsError.message}`);
+  }
+  
+  return {
+    total_input_tokens: stats.reduce((sum, item) => sum + (item.input_tokens || 0), 0),
+    total_output_tokens: stats.reduce((sum, item) => sum + (item.output_tokens || 0), 0),
+    total_cost: stats.reduce((sum, item) => sum + (item.cost || 0), 0),
+    conversations_count: conversationIds.length
+  };
 }

@@ -23,6 +23,27 @@ CREATE TABLE IF NOT EXISTS messages (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
+-- Track user credits and referral relationships
+CREATE TABLE IF NOT EXISTS user_accounts (
+  user_id UUID REFERENCES auth.users(id) PRIMARY KEY,
+  available_credits DECIMAL NOT NULL DEFAULT 0,
+  lifetime_usage_cost DECIMAL NOT NULL DEFAULT 0,
+  referral_code TEXT UNIQUE NOT NULL DEFAULT gen_random_uuid()::text,
+  referred_by UUID REFERENCES auth.users(id),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+-- Store token usage per conversation
+CREATE TABLE IF NOT EXISTS conversation_usage (
+  conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  input_tokens INTEGER NOT NULL DEFAULT 0,
+  output_tokens INTEGER NOT NULL DEFAULT 0,
+  cost DECIMAL NOT NULL DEFAULT 0,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
 -- Add comments on columns
 COMMENT ON COLUMN messages.metadata IS 'Stores tool usage history, execution steps, and other execution metadata';
 COMMENT ON COLUMN messages.message_type IS 'Type of message: "message" (final response), "thought" (intermediate reasoning), "tool_call" (tool invocation), or "tool_result" (tool response)';
@@ -30,6 +51,8 @@ COMMENT ON COLUMN messages.message_type IS 'Type of message: "message" (final re
 -- Enable Row Level Security
 ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_accounts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE conversation_usage ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for conversations
 CREATE POLICY "Users can view their own conversations"
@@ -73,6 +96,15 @@ CREATE POLICY "Users can update messages in their conversations"
     )
   );
 
+-- Create policies for user accounts and usage
+CREATE POLICY "Users can view only their own account"
+  ON user_accounts FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can view only their own conversation usage"
+  ON conversation_usage FOR SELECT
+  USING (auth.uid() = user_id);
+
 -- Create function to update timestamps
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -91,12 +123,16 @@ CREATE TRIGGER update_messages_updated_at
 BEFORE UPDATE ON messages
 FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
 
+CREATE TRIGGER update_user_accounts_updated_at
+BEFORE UPDATE ON user_accounts
+FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+
 -- Enable realtime for these tables
 ALTER PUBLICATION supabase_realtime ADD TABLE conversations;
 ALTER PUBLICATION supabase_realtime ADD TABLE messages;
 
--- Create index on conversation_id for faster message lookups
+-- Create indices
 CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);
-
--- Create index on user_id for faster conversation lookups
-CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations(user_id); 
+CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations(user_id);
+CREATE INDEX IF NOT EXISTS idx_conversation_usage_user_id ON conversation_usage(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_accounts_referred_by ON user_accounts(referred_by); 

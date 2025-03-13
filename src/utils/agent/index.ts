@@ -1,21 +1,20 @@
-import { createClient } from "@/utils/supabase/server";
 import { AGENT_MESSAGES, processAgentResponse } from "./utils";
 import { getAgent, mainSearchToolName } from "./llm";
 import { AIMessage, HumanMessage, ToolMessage } from "@langchain/core/messages";
-
+import { AgentDBService } from "./db";
 
 // Re-export for backward compatibility
 export { AGENT_MESSAGES } from "./utils";
 
-export const newsPrompt = `You provide informative responses about news topics. Current date and time is ${new Date().toISOString()}. You search for news related to a certain query. 
+export const newsPrompt = `You provide informative responses about news topics. Current date and time is ${new Date().toISOString()}. 
 
-You need to break the task into 2 parts: Namely "Search" and "Analysis"
+You need to break a search task into 2 parts: Namely "Search" and "Analysis"
 
 On the Search step: Try to diversify the search tools, Some guidelines: 
 * use ${mainSearchToolName} to search for news related data
-* If the request is related to a region with non-English language, try to search with both English and local language to get the most comprehensive results
+* If the request is related to a region with non-English language, try to search with both English and local language (not just English and user language)
 * Try multiple iterations with different search queries, to diversify the search results and find the most relevant ones
-* use WebBrowser to search to parse the web page and extract the content when the search result is not ccomplete
+* use WebBrowser to search to parse the web page and extract the content when the search result is not complete
 * use Wikipedia when you need knowledge on topics that's less time sensitive, but proof and truth is more important.
 
 On the Analysis step: Try to
@@ -42,34 +41,6 @@ export type RawMessage = {
   },
   lc: number,
   type: string,
-}
-
-/**
- * Fetch conversation history from the database
- */
-async function getConversationHistory(conversationId: string) {
-  console.log(`📚 Getting conversation history for: ${conversationId}`);
-  
-  try {
-    const supabase = await createClient();
-    
-    const { data, error } = await supabase
-      .from("messages")
-      .select("*")
-      .eq("conversation_id", conversationId)
-      .order("created_at", { ascending: true });
-      
-    if (error) {
-      console.error("Error fetching conversation history:", error);
-      return [];
-    }
-    
-    console.log(`📚 Fetched ${data.length} messages from conversation history`);
-    return data;
-  } catch (error) {
-    console.error("Error in getConversationHistory:", error);
-    return [];
-  }
 }
 
 /**
@@ -105,6 +76,7 @@ function formatMessagesForAgent(messages: Array<{
  * Process a user message with the agent
  */
 export const processMessage = async (
+  userMessageId: string,
   conversationId: string,
   message: string
 ) => {
@@ -112,8 +84,11 @@ export const processMessage = async (
     console.log(`🔄 Agent: Processing message for conversation ID: ${conversationId}`);
     console.log(`💬 Agent: Message: "${message.substring(0, 30)}${message.length > 30 ? '...' : ''}"`);
     
+    // Initialize the database service
+    const dbService = await AgentDBService.getInstance();
+    
     // Get conversation history for context
-    const conversationHistory = await getConversationHistory(conversationId);
+    const conversationHistory = await dbService.getConversationHistory(conversationId);
     
     const formattedHistory = formatMessagesForAgent(conversationHistory);
     
@@ -124,7 +99,6 @@ export const processMessage = async (
     const finalHistory = [{ role: "system", content: newsPrompt }, ...formattedHistory];
 
     console.log(`📚 Agent: Including ${finalHistory.length} messages in final history`);
-
     
     // Invoke with the complete message history
     const result = await agent.invoke(
@@ -139,7 +113,36 @@ export const processMessage = async (
     
     // Use the utility function to process the agent response
     const processedResponse = processAgentResponse(messages);
-    console.log(`🔍 Agent: Processed ${processedResponse.messages.length} agent messages`);
+    console.log(`📊 Agent: Token usage - Input: ${processedResponse.input_tokens}, Output: ${processedResponse.output_tokens}, Cost: $${processedResponse.cost.toFixed(4)}`);
+    
+    // Store usage statistics in the database
+    try {
+      const adminDbService = await AgentDBService.getInstance(true);
+      // Get user ID associated with the conversation
+      const userId = await adminDbService.getConversationUserId(conversationId);
+      
+      if (userId) {
+        // Update conversation-level usage
+        await adminDbService.updateConversationUsage(
+          userId,
+          conversationId,
+          processedResponse.input_tokens,
+          processedResponse.output_tokens,
+          processedResponse.cost
+        );
+        
+        // Update user-level usage
+        await adminDbService.updateUserUsage(
+          userId,
+          processedResponse.cost
+        );
+      } else {
+        console.warn("User ID not found for conversation, skipping usage updates");
+      }
+    } catch (statsError) {
+      console.error("Failed to store usage statistics:", statsError);
+      // Continue with response even if stats storage fails
+    }
     
     return processedResponse;
   } catch (error) {
@@ -150,7 +153,10 @@ export const processMessage = async (
         type: 'message',
         content: AGENT_MESSAGES.ERROR,
         metadata: { error: error instanceof Error ? error.message : "Unknown error" }
-      }]
+      }],
+      input_tokens: 0,
+      output_tokens: 0,
+      cost: 0
     };
   }
 };
