@@ -10,7 +10,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
     const body = await req.json();
     const { message, conversationId } = body;
 
-    console.log(`📨 Received message from user ${userId}`);
+    console.log(`📨 Received message from user ${userId}, Conversation Id ${conversationId}`);
     
     if (!message) {
       return NextResponse.json(

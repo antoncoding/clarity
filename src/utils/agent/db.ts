@@ -93,6 +93,7 @@ export class AgentDBService {
         .single();
         
       if (error || !data) {
+        console.log('verify conversation ownership error', error)
         console.error("Conversation not found or not owned by user");
         return false;
       }
