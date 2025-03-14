@@ -13,22 +13,15 @@ export class AgentDBService {
   }
   
   /**
-   * Get singleton instance of the database service
+   * Create a new instance specifically for the current user
    */
-  public static async getInstance(useServiceRole: boolean = false): Promise<AgentDBService> {
-    // Don't reuse the instance when switching between service role and normal client
-    // This ensures we don't mix authentication contexts
-    if (useServiceRole || !AgentDBService.instance) {
-      const client = await createClient({ useServiceRole });
-      
-      if (useServiceRole) {
-        return new AgentDBService(client);
-      } else if (!AgentDBService.instance) {
-        AgentDBService.instance = new AgentDBService(client);
-      }
-    }
-    
-    return AgentDBService.instance;
+  public static async createForUser(userId: string, useServiceRole: boolean = false): Promise<AgentDBService> {
+    console.log('Creating new instance for user:', userId);
+    const client = await createClient({ 
+      useServiceRole,
+      // Optional: Pass userId to ensure correct auth context
+    });
+    return new AgentDBService(client);
   }
   
   /**

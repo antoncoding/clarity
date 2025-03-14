@@ -81,14 +81,15 @@ function formatMessagesForAgent(messages: Array<{
  */
 export const processMessage = async (
   conversationId: string,
-  message: string
+  message: string,
+  userId: string
 ) => {
   try {
     console.log(`🔄 Agent: Processing message for conversation ID: ${conversationId}`);
     console.log(`💬 Agent: Message: "${message.substring(0, 30)}${message.length > 30 ? '...' : ''}"`);
     
-    // Initialize the database service
-    const dbService = await AgentDBService.getInstance();
+    // Initialize the database service for this specific user
+    const dbService = await AgentDBService.createForUser(userId);
     
     // Get conversation history for context
     const conversationHistory = await dbService.getConversationHistory(conversationId);

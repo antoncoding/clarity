@@ -20,7 +20,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
     }
 
     // Initialize the database service
-    const dbService = await AgentDBService.getInstance();
+    const dbService = await AgentDBService.createForUser(userId);
 
     // Create a new conversation if one doesn't exist
     let actualConversationId = conversationId;
@@ -66,6 +66,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       message,
       messageData.id,
       actualConversationId,
+      userId
     );
 
     return NextResponse.json({
@@ -87,15 +88,16 @@ async function processNewUserMessage(
   userMessage: string,
   userMessageId: string,
   conversationId: string,
+  userId: string
 ) {
-  // Initialize the database service
-  const dbService = await AgentDBService.getInstance();
+  // Initialize the database service for this specific user
+  const dbService = await AgentDBService.createForUser(userId);
 
   try {
     console.log(`🤖 Processing agent response for message: ${userMessageId}`);
     
     // Call the agent to process the message
-    const { response, messages } = await processMessage(conversationId, userMessage);
+    const { response, messages } = await processMessage(conversationId, userMessage, userId);
     
     console.log(`✅ Agent received response of length: ${response.length}`);
     console.log(`📊 Agent generated ${messages.length} total messages`);
