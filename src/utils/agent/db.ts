@@ -218,8 +218,7 @@ export class AgentDBService {
           updated_at: new Date().toISOString()
         };
         
-        console.log('Updating conversation usage with data:', updateData);
-        console.log('For conversation_id:', conversationId);
+        console.log(`🏦 Updating conversation usage. New total cost: $${updateData.cost}`);
         
         const { error: updateError } = await this.client
           .from("conversation_usage")

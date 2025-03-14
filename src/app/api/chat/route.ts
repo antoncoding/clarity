@@ -51,7 +51,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       }
     }
 
-    // Add the message to the database
+    // Add the user message to the database (shows up on UI)
     const messageData = await dbService.insertMessage(
       actualConversationId,
       message,
@@ -62,33 +62,31 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
     console.log(`✅ User message inserted: ${messageData.id}`);
 
     // Invoke agent asynchronously
-    processAgentMessage(
-      userId,
+    processNewUserMessage(
       message,
       messageData.id,
-      actualConversationId
+      actualConversationId,
     );
 
     return NextResponse.json({
       success: true,
       messageId: messageData.id,
       conversationId: actualConversationId,
-    });
+    }, { status: 200 });
   } catch (error) {
     console.error("❌ Unexpected error in chat API:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Internal server error", success: false },
       { status: 500 }
     );
   }
 });
 
 // Function to process the agent response asynchronously
-async function processAgentMessage(
-  userId: string,
+async function processNewUserMessage(
   userMessage: string,
   userMessageId: string,
-  conversationId: string
+  conversationId: string,
 ) {
   // Initialize the database service
   const dbService = await AgentDBService.getInstance();
@@ -97,7 +95,7 @@ async function processAgentMessage(
     console.log(`🤖 Processing agent response for message: ${userMessageId}`);
     
     // Call the agent to process the message
-    const { response, messages } = await processMessage(userMessageId, conversationId, userMessage);
+    const { response, messages } = await processMessage(conversationId, userMessage);
     
     console.log(`✅ Agent received response of length: ${response.length}`);
     console.log(`📊 Agent generated ${messages.length} total messages`);

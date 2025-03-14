@@ -62,38 +62,6 @@ export type UsageStats = {
 };
 
 /**
- * Creates a new conversation
- */
-export async function createConversation(title?: string): Promise<Conversation> {
-  const supabase = createClient();
-  
-  // Get the current user to include user_id
-  const { data: userData } = await supabase.auth.getUser();
-  if (!userData?.user) {
-    throw new Error("You must be logged in to start a conversation");
-  }
-  
-  // Create a conversation with a random number ID if no title provided
-  const conversationTitle = title || `Conversation #${Math.floor(Math.random() * 10000)}`;
-  
-  const { data, error } = await supabase
-    .from("conversations")
-    .insert([{ 
-      title: conversationTitle,
-      user_id: userData.user.id 
-    }])
-    .select()
-    .single();
-    
-  if (error) {
-    console.error("Error creating conversation:", error);
-    throw new Error(`Error creating conversation: ${error.message}`);
-  }
-  
-  return data;
-}
-
-/**
  * Fetches a specific conversation by ID
  */
 export async function getConversationById(id: string): Promise<Conversation> {
@@ -246,7 +214,10 @@ export function subscribeToConversations(
  * Sends a message to the API for processing
  * The API handles message creation in the database - do not create messages directly
  */
-export async function sendMessageToApi(messageContent: string, conversationId: string, message_type?: 'message' | 'thought' | 'tool_call' | 'tool_result' | 'error'): Promise<void> {
+export async function sendMessageToApi(
+  messageContent: string, 
+  conversationId?: string, 
+): Promise<{ success: boolean, messageId: string, conversationId: string }> {
   try {
     const response = await fetch("/api/chat", {
       method: "POST",
@@ -254,7 +225,6 @@ export async function sendMessageToApi(messageContent: string, conversationId: s
       body: JSON.stringify({
         message: messageContent,
         conversationId: conversationId,
-        message_type
       }),
       credentials: "include",
     });
@@ -265,7 +235,8 @@ export async function sendMessageToApi(messageContent: string, conversationId: s
     }
     
     // The agent response will be handled via the real-time subscription
-    return;
+    const data = await response.json()
+    return data 
   } catch (error) {
     console.error("Error calling chat API:", error);
     throw error;

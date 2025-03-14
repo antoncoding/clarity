@@ -80,7 +80,6 @@ function formatMessagesForAgent(messages: Array<{
  * Process a user message with the agent
  */
 export const processMessage = async (
-  userMessageId: string,
   conversationId: string,
   message: string
 ) => {
