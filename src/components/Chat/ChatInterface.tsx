@@ -305,7 +305,7 @@ export function ChatInterface() {
           onClick={() => setSelectedConversationId(null)}
           className="text-xs sm:text-sm bg-primary-100 hover:bg-primary-200 text-primary-800 px-2 py-1 sm:px-3 sm:py-1 rounded"
         >
-          New Chat
+          New Search
         </button>
       </div>
       

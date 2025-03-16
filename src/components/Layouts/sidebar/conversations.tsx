@@ -186,7 +186,7 @@ export function ConversationsList({ isExpanded, onConversationClick }: Conversat
             isActive={pathname === "/"}
           >
             {isExpanded && (
-              <div className="p-1 flex items-center gap-2"> <CirclePlus className="h-4 w-4" /> <span className="text-sm">  New Chat</span> </div>
+              <div className="p-1 flex items-center gap-2"> <CirclePlus className="h-4 w-4" /> <span className="text-sm">  Search</span> </div>
             )}
           </MenuItem>
         </li>
