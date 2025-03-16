@@ -79,7 +79,6 @@ export class BraveNewsSearch extends StructuredTool {
         .describe("The language code for the search results. Defaults to English (en)."),
       countryCode: z.enum(VALID_COUNTRY_CODES as [string, ...string[]])
         .optional()
-        .default("US")
         .describe("The country code to prioritize news from. Defaults to United States (US).")
     });
   }
