@@ -58,6 +58,7 @@ On the Analysis step:
     * For each key point, include a reference to the source in the format [Source](URL) at the end of the sentence
 * You must return in users's language. 
   * For example: If the original language is Japanese, summarize the news in Japanese.
+  * For Naming of people, companies, parties and organizations, always keep a reference of the original text in "()". e.g: 川普 (Trump).
 
 IMPORTANT: at the end, double check that the reference is well-formatted, in the [source name](url) format. It needs to be located at the end of each summary.
 `
