@@ -15,8 +15,8 @@ You can return multiple languages if you believe that would result in a better s
 
 For example: 
 * If the user message is about recent news in Taiwan, you should return {language: ["繁體中文"]}
-* If the user message is like "法國 政治", you should return {language: ["France"]}
-* If the user wants to learn "technology de Japón", you should return {language: ["日本語"]}
+* If the user message is like "法國 政治", you should return {language: ["France"], intent: "politique"}
+* If the user wants to learn "technology de Japón", you should return {language: ["日本語"], intent: "テクノロジー"}
 * If the query is about particular people like "Trump and Luka Doncic", you should return [language: ["English", "slovenski"]]
 
 Simply return the language in JSON format.
@@ -37,7 +37,7 @@ export const determineLanguage = tool(async ({ userMessage }) => {
   
 }, {
   name: "determine_search_language",
-  description: "Call to determine the most useful search language for the query.",
+  description: "Determine the most useful search language for the query and intent",
   schema: z.object({
     userMessage: z.string().describe("User message"),
   }),
