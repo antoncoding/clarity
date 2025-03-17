@@ -2,12 +2,18 @@
 
 import ReactMarkdown from "react-markdown";
 import { useMemo } from "react";
+import { convertToChineseSetting } from "@/utils/ui/chinese";
 
 interface MarkdownContentProps {
   content: string;
 }
 
 export function MarkdownContent({ content }: MarkdownContentProps) {
+  // Apply Chinese character conversion
+  const convertedContent = useMemo(() => {
+    return convertToChineseSetting(content);
+  }, [content]);
+
   // Function to extract domain from URL
   const getDomain = (url: string) => {
     try {
@@ -69,7 +75,7 @@ export function MarkdownContent({ content }: MarkdownContentProps) {
         ),
       }}
     >
-      {content}
+      {convertedContent}
     </ReactMarkdown>
   );
 } 

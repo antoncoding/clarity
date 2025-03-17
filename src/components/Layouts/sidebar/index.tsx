@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { NAV_DATA } from "./data";
-import { Authentication } from "./icons";
+import { Authentication, Settings } from "./icons";
 import { MenuItem } from "./menu-item";
 import { useSidebarContext } from "./sidebar-context";
 import { createClient } from "@/utils/supabase/client";
@@ -168,6 +168,18 @@ export function Sidebar() {
           </div>
           
           <div className="mt-auto border-t border-gray-200 pt-2 sm:pt-3 dark:border-gray-800">
+            <Link 
+              href="/settings"
+              className={cn(
+                "mb-1 sm:mb-2 flex w-full items-center gap-2 sm:gap-3 rounded-md px-2 sm:px-3 py-2 text-xs sm:text-sm hover:bg-primary-50 dark:hover:bg-primary-900/30",
+                !isOpen && "justify-center px-0"
+              )}
+              onClick={handleMobileLinkClick}
+            >
+              <Settings className="size-4 sm:size-5 text-primary-500 dark:text-primary-300" />
+              {isOpen && <span className="text-bold text-gray-700 dark:text-gray-300">Settings</span>}
+            </Link>
+            
             <button 
               className={cn(
                 "mb-1 sm:mb-2 flex w-full items-center gap-2 sm:gap-3 rounded-md px-2 sm:px-3 py-2 text-xs sm:text-sm hover:bg-primary-50 dark:hover:bg-primary-900/30",
