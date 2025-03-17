@@ -12,6 +12,7 @@ import { MenuItem } from "./menu-item";
 import { useConversation } from "@/context/conversation-context";
 import { BounceLoader } from "react-spinners";
 import { CirclePlus } from "lucide-react";
+import Link from "next/link";
 
 // Define conversation type
 type Conversation = {
@@ -23,10 +24,15 @@ type Conversation = {
 // Add to props interface
 interface ConversationsListProps {
   isExpanded: boolean;
-  onConversationClick?: () => void; // New prop
+  onConversationClick: (conversationId: string) => void;
+  activePath?: string;
 }
 
-export function ConversationsList({ isExpanded, onConversationClick }: ConversationsListProps) {
+export function ConversationsList({ 
+  isExpanded, 
+  onConversationClick,
+  activePath 
+}: ConversationsListProps) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -192,48 +198,30 @@ export function ConversationsList({ isExpanded, onConversationClick }: Conversat
         </li>
         
         {/* List of existing conversations */}
-        {conversations.map((conversation) => (
-          <li key={conversation.id} className="relative">
-            <ConversationItem
-              isExpanded={isExpanded}
-              isActive={selectedConversationId === conversation.id}
-              onClick={() => {
-                setSelectedConversationId(conversation.id);
-                if (onConversationClick) onConversationClick(); // Call the callback when a conversation is clicked
-              }}
-              className="h-auto p-1 px-4"
-            >
-              {isExpanded ? (
-                <div className="flex w-full items-center justify-between">
-                  <span className="truncate max-w-[120px] text-inherit" title={conversation.title || generateRandomTitle()}>
-                    {conversation.title || generateRandomTitle()}
-                  </span>
-                  
-                  {/* Delete button - always aligned right */}
-                  <button 
-                    onClick={(e) => confirmDelete(conversation.id, conversation.title, e)}
-                    className="ml-auto p-2 text-gray-400 hover:text-red-500 transition-colors"
-                    aria-label="Delete conversation"
-                  >
-                    <TrashIcon className="h-3 w-3" />
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <span className="text-[10px]">#</span>
-                  {/* Small delete button for collapsed view */}
-                  <button 
-                    onClick={(e) => confirmDelete(conversation.id, conversation.title, e)}
-                    className="absolute -right-1 -top-1 p-2 text-gray-400 hover:text-red-500 transition-colors"
-                    aria-label="Delete conversation"
-                  >
-                    <TrashIcon className="h-2 w-2" />
-                  </button>
-                </>
-              )}
-            </ConversationItem>
-          </li>
-        ))}
+        {conversations.map((conversation) => {
+          const conversationPath = `/news/${conversation.id}`;
+          const isActive = activePath === conversationPath;
+          
+          return (
+            <li key={conversation.id} className="relative">
+              <Link
+                href={conversationPath}
+                onClick={(e) => {
+                  e.preventDefault();
+                  onConversationClick(conversation.id);
+                }}
+                className={cn(
+                  "block py-1 px-2 rounded-md text-xs truncate",
+                  isActive 
+                    ? "bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300" 
+                    : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                )}
+              >
+                {conversation.title || `Conversation ${conversation.id.slice(0, 6)}`}
+              </Link>
+            </li>
+          );
+        })}
       </ul>
 
       {/* Confirmation Modal */}

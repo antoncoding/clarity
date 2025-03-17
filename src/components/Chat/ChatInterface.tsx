@@ -14,6 +14,7 @@ import {
 } from "@/utils/db";
 import { ToolResult } from "./ToolResult";
 import { MarkdownContent } from "./MarkdownContent";
+import { useRouter } from "next/navigation";
 
 interface MessageProps {
   content: string;
@@ -21,6 +22,10 @@ interface MessageProps {
   isProcessing?: boolean;
   metadata?: any;
   message_type?: string;
+}
+
+interface ChatInterfaceProps {
+  conversationId?: string;
 }
 
 const UserMessage = ({ content }: MessageProps) => (
@@ -61,8 +66,7 @@ const AIMessage = ({ content, isProcessing, metadata, message_type }: MessagePro
   </div>
 );
 
-export function ChatInterface() {
-  const { selectedConversationId, setSelectedConversationId } = useConversation();
+export function ChatInterface({ conversationId }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -70,6 +74,8 @@ export function ChatInterface() {
   const [conversationTitle, setConversationTitle] = useState<string>("New Chat");
   const [isAgentProcessing, setIsAgentProcessing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  
   
   // Clear out component state when changing conversations
   useEffect(() => {
@@ -79,32 +85,32 @@ export function ChatInterface() {
     setIsLoading(false);
     setIsLoadingHistory(true);
     setIsAgentProcessing(false);
-  }, [selectedConversationId]);
+  }, []);
 
   // Load existing messages when conversation ID changes
   useEffect(() => {
     const loadConversationMessages = async () => {
-      if (!selectedConversationId) {
+      if (!conversationId) {
         return;
       }
       
       try {
-        console.log(`Loading messages for conversation: ${selectedConversationId}`);
+        console.log(`Loading messages for conversation: ${conversationId}`);
         
         // Fetch conversation details to get the title
-        const conversationData = await getConversationById(selectedConversationId);
+        const conversationData = await getConversationById(conversationId);
         if (conversationData) {
           setConversationTitle(conversationData.title);
         }
         
         // Fetch messages for this conversation
-        const loadedMessages = await getConversationMessages(selectedConversationId);
+        const loadedMessages = await getConversationMessages(conversationId);
         
         if (loadedMessages.length > 0) {
           setMessages(loadedMessages);
-          console.log(`Loaded ${loadedMessages.length} messages for conversation ${selectedConversationId}`);
+          console.log(`Loaded ${loadedMessages.length} messages for conversation ${conversationId}`);
         } else {
-          console.log(`No messages found for conversation ${selectedConversationId}`);
+          console.log(`No messages found for conversation ${conversationId}`);
         }
       } catch (err) {
         console.error("Error in loadConversationMessages:", err);
@@ -113,16 +119,16 @@ export function ChatInterface() {
       }
     };
     
-    if (selectedConversationId) {
+    if (conversationId) {
       loadConversationMessages();
     }
-  }, [selectedConversationId]);
+  }, [conversationId]);
 
   // Set up real-time subscription to messages
   useEffect(() => {
-    if (!selectedConversationId) return;
+    if (!conversationId) return;
     
-    console.log(`Setting up realtime subscription for conversation: ${selectedConversationId}`);
+    console.log(`Setting up realtime subscription for conversation: ${conversationId}`);
     
     // Set up subscription handlers
     const handleInsert = (newMessage: MessageRow) => {
@@ -199,7 +205,7 @@ export function ChatInterface() {
     
     // Subscribe to conversation messages
     const unsubscribe = subscribeToConversationMessages(
-      selectedConversationId,
+      conversationId,
       handleInsert,
       handleUpdate
     );
@@ -207,7 +213,7 @@ export function ChatInterface() {
     return () => {
       unsubscribe();
     };
-  }, [selectedConversationId]);
+  }, [conversationId]);
 
   // Check if we should show the thinking indicator
   useEffect(() => {
@@ -232,7 +238,7 @@ export function ChatInterface() {
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!inputValue.trim() || isLoading || !selectedConversationId) return;
+    if (!inputValue.trim() || isLoading || !conversationId) return;
 
     try {
       setIsLoading(true);
@@ -267,7 +273,7 @@ export function ChatInterface() {
       
       // Send message to API - let the API handle database insertion
       // No direct database call here - avoiding duplication
-      await sendMessageToApi(messageContent, selectedConversationId);
+      await sendMessageToApi(messageContent, conversationId);
       
       // The actual messages (both user and agent) will be handled via the real-time subscription
     } catch (error) {
@@ -296,13 +302,18 @@ export function ChatInterface() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Handle new search button click
+  const handleNewSearch = () => {
+    router.push('/news');
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Chat header */}
       <div className="border-b border-gray-200 dark:border-gray-800 p-3 sm:p-4 flex justify-between items-center">
         <h2 className="text-base sm:text-lg font-medium truncate max-w-[70%]">{conversationTitle}</h2>
         <button 
-          onClick={() => setSelectedConversationId(null)}
+          onClick={handleNewSearch}
           className="text-xs sm:text-sm bg-primary-100 hover:bg-primary-200 text-primary-800 px-2 py-1 sm:px-3 sm:py-1 rounded"
         >
           New Search
