@@ -1,18 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { cn } from "@/lib/utils";
 import { usePathname } from "next/navigation";
-import { useSidebarContext } from "./sidebar-context";
-import { TrashIcon } from "./icons";
 import { Modal } from "@/components/ui/Modal";
-import { ConversationItem } from "./conversation-item";
 import { MenuItem } from "./menu-item";
 import { useConversation } from "@/context/conversation-context";
 import { BounceLoader } from "react-spinners";
-import { CirclePlus } from "lucide-react";
+import { CirclePlus, TrashIcon } from "lucide-react";
 import Link from "next/link";
+import { ConversationItem } from "./conversation-item";
 
 // Define conversation type
 type Conversation = {
@@ -28,17 +27,17 @@ interface ConversationsListProps {
   activePath?: string;
 }
 
-export function ConversationsList({ 
-  isExpanded, 
+export function ConversationsList({
+  isExpanded,
   onConversationClick,
-  activePath 
+  activePath
 }: ConversationsListProps) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const supabase = createClient();
   const pathname = usePathname();
-  const { isMobile, setIsOpen } = useSidebarContext();
+  const router = useRouter();
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [conversationToDelete, setConversationToDelete] = useState<string | null>(null);
   const [conversationTitleToDelete, setConversationTitleToDelete] = useState<string>("");
@@ -83,18 +82,18 @@ export function ConversationsList({
   // Proceed with deletion
   const proceedWithDeletion = async () => {
     if (!conversationToDelete) return;
-    
+
     setIsDeleting(true);
-    
+
     try {
       console.log(`Attempting to delete conversation: ${conversationToDelete}`);
-      
+
       // Delete the messages first (since they reference the conversation)
       const { error: messagesError } = await supabase
         .from("messages")
         .delete()
         .eq("conversation_id", conversationToDelete);
-        
+
       if (messagesError) {
         console.error("Error deleting conversation messages:", messagesError);
         alert(`Error deleting messages: ${messagesError.message}`);
@@ -103,35 +102,35 @@ export function ConversationsList({
       } else {
         console.log(`Successfully deleted messages for conversation: ${conversationToDelete}`);
       }
-      
+
       // Then delete the conversation
       const { error: conversationError, data: deleteResult } = await supabase
         .from("conversations")
         .delete()
         .eq("id", conversationToDelete)
         .select();
-        
+
       if (conversationError) {
         console.error("Error deleting conversation:", conversationError);
         alert(`Error deleting conversation: ${conversationError.message}`);
         setIsDeleting(false);
         return;
       }
-      
+
       console.log(`Deletion result:`, deleteResult);
-      
+
       // If deleted conversation was selected, reset to new chat
       if (selectedConversationId === conversationToDelete) {
         console.log(`Resetting selected conversation since ${conversationToDelete} was deleted`);
         setSelectedConversationId(null);
       }
-      
+
       // Refresh the conversation list
       await fetchConversations();
-      
+
       // Force refresh if the UI doesn't update
       setConversations(prev => [...prev.filter(c => c.id !== conversationToDelete)]);
-      
+
     } catch (err) {
       console.error("Error in deleteConversation:", err);
       alert(`Unexpected error: ${err instanceof Error ? err.message : String(err)}`);
@@ -149,7 +148,7 @@ export function ConversationsList({
     fetchConversations();
 
     const channel = supabase.channel('public:conversations');
-    
+
     channel
       .on('postgres_changes', {
         event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
@@ -168,10 +167,7 @@ export function ConversationsList({
 
   // Create a new conversation
   const createNewChat = () => {
-    setSelectedConversationId(null);
-    if (isMobile) {
-      setIsOpen(false); // Close sidebar on mobile
-    }
+    router.push('/news');
   };
 
   if (isLoading && conversations.length === 0) {
@@ -180,7 +176,7 @@ export function ConversationsList({
 
   return (
     <>
-      <ul className="space-y-1 mt-2 pl-3"> 
+      <ul className="space-y-1 mt-2 pl-3">
         {/* New Chat option */}
         <li>
           <MenuItem
@@ -196,29 +192,52 @@ export function ConversationsList({
             )}
           </MenuItem>
         </li>
-        
+
         {/* List of existing conversations */}
         {conversations.map((conversation) => {
           const conversationPath = `/news/${conversation.id}`;
           const isActive = activePath === conversationPath;
-          
+
           return (
             <li key={conversation.id} className="relative">
-              <Link
-                href={conversationPath}
-                onClick={(e) => {
-                  e.preventDefault();
-                  onConversationClick(conversation.id);
+              <ConversationItem
+                isExpanded={isExpanded}
+                isActive={selectedConversationId === conversation.id}
+                onClick={() => {
+                  setSelectedConversationId(conversation.id);
+                  if (onConversationClick) onConversationClick(conversation.id); // Call the callback when a conversation is clicked
                 }}
-                className={cn(
-                  "block py-1 px-2 rounded-md text-xs truncate",
-                  isActive 
-                    ? "bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300" 
-                    : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
-                )}
+                className="h-auto p-1 pl-4 pr-2"
               >
-                {conversation.title || `Conversation ${conversation.id.slice(0, 6)}`}
-              </Link>
+                {isExpanded ? (
+                  <div className="flex w-full items-center justify-between">
+                    <span className="truncate max-w-[120px] text-inherit" title={conversation.title || generateRandomTitle()}>
+                      {conversation.title || generateRandomTitle()}
+                    </span>
+
+                    {/* Delete button - always aligned right */}
+                    <button
+                      onClick={(e) => confirmDelete(conversation.id, conversation.title, e)}
+                      className="ml-auto p-2 text-gray-400 hover:text-red-500 transition-colors"
+                      aria-label="Delete conversation"
+                    >
+                      <TrashIcon className="h-3 w-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <span className="text-[10px]">#</span>
+                    {/* Small delete button for collapsed view */}
+                    <button
+                      onClick={(e) => confirmDelete(conversation.id, conversation.title, e)}
+                      className="absolute -right-1 -top-1 p-2 text-gray-400 hover:text-red-500 transition-colors"
+                      aria-label="Delete conversation"
+                    >
+                      <TrashIcon className="h-2 w-2" />
+                    </button>
+                  </>
+                )}
+              </ConversationItem>
             </li>
           );
         })}
@@ -246,9 +265,8 @@ export function ConversationsList({
             </button>
             <button
               onClick={proceedWithDeletion}
-              className={`px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md shadow-sm ${
-                isDeleting ? 'opacity-75 cursor-not-allowed' : 'hover:bg-red-700'
-              } focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2`}
+              className={`px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md shadow-sm ${isDeleting ? 'opacity-75 cursor-not-allowed' : 'hover:bg-red-700'
+                } focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2`}
               disabled={isDeleting}
             >
               {isDeleting ? (

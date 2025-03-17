@@ -1,14 +1,14 @@
 import { ChatAnthropic } from "@langchain/anthropic";
 import { createSupervisor } from "@langchain/langgraph-supervisor";
 import { searcherAgent } from "./agents/searcher";
-import { editorAgent, runEditorAgent } from "./agents/editor";
-import { reviewerAgent, runReviewerAgent } from "./agents/reviewer";
+import { editorAgent } from "./agents/editor";
+import { reviewerAgent } from "./agents/reviewer";
 import { AIMessage } from "@langchain/core/messages";
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 
 // Create a wrapper for the searcher agent as a tool
-const searchTool = tool(
+export const searchTool = tool(
   async (args) => {
     console.log(`🔍 Searching for: "${args.query}"`);
     

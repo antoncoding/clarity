@@ -312,12 +312,6 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
       {/* Chat header */}
       <div className="border-b border-gray-200 dark:border-gray-800 p-3 sm:p-4 flex justify-between items-center">
         <h2 className="text-base sm:text-lg font-medium truncate max-w-[70%]">{conversationTitle}</h2>
-        <button 
-          onClick={handleNewSearch}
-          className="text-xs sm:text-sm bg-primary-100 hover:bg-primary-200 text-primary-800 px-2 py-1 sm:px-3 sm:py-1 rounded"
-        >
-          New Search
-        </button>
       </div>
       
       {/* Messages area */}

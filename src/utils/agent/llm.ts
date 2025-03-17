@@ -34,7 +34,7 @@ On the Search step:
 Base on user query, you can use multiple tool and iterations to find the most relevant results. 
 
 Tool use guide:
-* use ${determineLanguage.name} to determine the most useful search language for the query. Use that language as input in ${braveNewsSearch.name} 
+* use ${determineLanguage.name} to determine the most useful search language and intent for the query. Use that language as query in ${braveNewsSearch.name} 
   * If the result is not good, try search again with less specific query, and remove "searchLanguage" from the query.
   * Don't use the term "news" in the query.
 * use ${braveSearch.name} to search for specific query, specific news or events.
