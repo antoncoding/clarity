@@ -13,7 +13,6 @@ import {
 } from "@/utils/db";
 import { ToolResult } from "./ToolResult";
 import { MarkdownContent } from "./MarkdownContent";
-import { useRouter } from "next/navigation";
 
 interface MessageProps {
   content: string;
@@ -73,7 +72,6 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
   const [conversationTitle, setConversationTitle] = useState<string>("New Chat");
   const [isAgentProcessing, setIsAgentProcessing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
   
   
   // Clear out component state when changing conversations
