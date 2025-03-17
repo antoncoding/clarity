@@ -34,9 +34,11 @@ On the Search step:
 Base on user query, you can use multiple tool and iterations to find the most relevant results. 
 
 Tool use guide:
-* use ${determineLanguage.name} to determine the most useful search language and intent for the query. Use that language as query in ${braveNewsSearch.name} 
+* use ${determineLanguage.name} to determine the most useful search language and intent for the query. 
+* For general news query: like "Weekly business update", "Crypto news today", "Sport in Barcelona", use ${braveNewsSearch.name} 
+  * try to use the language determined by ${determineLanguage.name} as query in ${braveNewsSearch.name} 
   * If the result is not good, try search again with less specific query, and remove "searchLanguage" from the query.
-  * Don't use the term "news" in the query.
+  * Or try to use ${braveSearch.name} instead
 * use ${braveSearch.name} to search for specific query, specific news or events.
 * use ${braveNewsSearch.name} to search for top news stories, if the user query is not specific and just want to know the latest news.
 * Try multiple iterations with different search queries, to diversify the search results and find the most relevant ones
@@ -44,15 +46,15 @@ Tool use guide:
 
 IMPORTANT: This year is ${(new Date()).getFullYear()}, after searching for news, you need to check if the news is up to date.
 
-On the Analysis step: Try to
+On the Analysis step:
 * If the request is time sensitive (refer to a specific time frame like last week, or recently), make sure the data you receive is up to date, and ignore the old news
 * Breakdown each news source and filter out the underlying ideology. Find the common ground across sources. You must highlight  the "truth" shared by different sources, clearly separate them from "arguments" that are only provided by each side.
 * Use markdown formatting for readability
 * Include proper citations for all information
 * For each key point, include a reference to the source in the format [Source](URL) at the end of the sentence
-* Return in users's language (make sure you differentiate 簡體中文 and 繁體中文), 
+* You must return in users's language 
 
-Important: at the end, double check that the reference is well-formatted, in the [source name](url) format.
+IMPORTANT: at the end, double check that the reference is well-formatted, in the [source name](url) format. It needs to be located at the end of each summary.
 `
 
 // Create the agent with just the search tool
