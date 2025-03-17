@@ -4,7 +4,6 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
 // This middleware refreshes the user's session and adds the supabase-auth-token cookie
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next()
   
@@ -12,16 +11,22 @@ export async function middleware(req: NextRequest) {
   const supabase = await createClient()
   
   // Refresh the user's session if needed
-  await supabase.auth.getSession()
+  const { data: { session } } = await supabase.auth.getSession()
+  
+  // If the user is not logged in and trying to access a protected route, redirect to sign-in
+  if (!session && !req.nextUrl.pathname.startsWith('/auth/')) {
+    const redirectUrl = new URL('/auth/sign-in', req.url)
+    return NextResponse.redirect(redirectUrl)
+  }
   
   return res
 }
 
-// Add a matcher for API routes and private pages
+// Add a matcher for API routes and private pages, but exclude authentication routes
 export const config = {
   matcher: [
     '/api/:path*',
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    '/((?!_next/static|_next/image|favicon.ico|auth/sign-in|auth/sign-up).*)',
   ],
 }
 
