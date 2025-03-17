@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from "react";
 import { v4 as uuidv4 } from 'uuid';
 import { BounceLoader } from "react-spinners";
-import { useConversation } from "@/context/conversation-context";
 import { 
   Message, 
   MessageRow, 
@@ -302,10 +301,6 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Handle new search button click
-  const handleNewSearch = () => {
-    router.push('/news');
-  };
 
   return (
     <div className="flex flex-col h-full">

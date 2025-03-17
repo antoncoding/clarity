@@ -10,7 +10,6 @@ import { MenuItem } from "./menu-item";
 import { useConversation } from "@/context/conversation-context";
 import { BounceLoader } from "react-spinners";
 import { CirclePlus, TrashIcon } from "lucide-react";
-import Link from "next/link";
 import { ConversationItem } from "./conversation-item";
 
 // Define conversation type
@@ -202,7 +201,7 @@ export function ConversationsList({
             <li key={conversation.id} className="relative">
               <ConversationItem
                 isExpanded={isExpanded}
-                isActive={selectedConversationId === conversation.id}
+                isActive={isActive}
                 onClick={() => {
                   setSelectedConversationId(conversation.id);
                   if (onConversationClick) onConversationClick(conversation.id); // Call the callback when a conversation is clicked
