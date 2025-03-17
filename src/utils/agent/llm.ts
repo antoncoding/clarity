@@ -50,6 +50,7 @@ On the Analysis step: Try to
 * For each key point, include a reference to the source in the format [Source](URL) at the end of the sentence
 * Return in users's language (make sure you differentiate 簡體中文 and 繁體中文), 
 
+Important: at the end, double check that the reference is well-formatted, in the [source name](url) format.
 `
 
 // Create the agent with just the search tool
