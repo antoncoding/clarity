@@ -3,10 +3,10 @@
 import { Logo } from "@/components/logo";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { NAV_DATA } from "./data";
-import { Authentication } from "./icons";
+import { Authentication, Settings } from "./icons";
 import { MenuItem } from "./menu-item";
 import { useSidebarContext } from "./sidebar-context";
 import { createClient } from "@/utils/supabase/client";
@@ -23,6 +23,7 @@ type NavItem = {
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { setIsOpen, isOpen, isMobile, toggleSidebar } = useSidebarContext();
   const [isDarkMode, setIsDarkMode] = useState(false);
   
@@ -49,6 +50,17 @@ export function Sidebar() {
 
   // Add a function to close sidebar when clicking a link on mobile
   const handleMobileLinkClick = () => {
+    if (isMobile && isOpen) {
+      setIsOpen(false);
+    }
+  };
+
+  // Add a function to handle conversation clicks
+  const handleConversationClick = (conversationId: string) => {
+    // Navigate to the specific conversation URL
+    router.push(`/news/${conversationId}`);
+    
+    // Close sidebar on mobile if needed
     if (isMobile && isOpen) {
       setIsOpen(false);
     }
@@ -132,6 +144,7 @@ export function Sidebar() {
                 <nav role="navigation" aria-label={section.label}>
                   <ul className="space-y-1">
                     {section.items.map((item: NavItem) => {
+                      // Update to use the item.url if provided, otherwise use the default path
                       const href = item.url || "/" + item.title.toLowerCase().split(" ").join("-");
                         
                       return (
@@ -141,8 +154,13 @@ export function Sidebar() {
                               "flex items-center gap-2 sm:gap-3 py-2 sm:py-3 text-xs sm:text-sm",
                               !isOpen && "justify-center px-0"
                             )}
-                            isActive={pathname === href}
-                            onClick={handleMobileLinkClick} // Close sidebar when clicking a link on mobile
+                            isActive={
+                              // Update the active state check to handle nested routes
+                              (pathname === href) || 
+                              (!!item.showConversations && pathname.startsWith('/news/'))
+                            }
+                            onClick={handleMobileLinkClick}
+                            href={href} // Add href to make it a proper link
                           >
                             <item.icon
                               className="size-4 sm:size-5 shrink-0 text-primary-600 dark:text-primary-300"
@@ -155,7 +173,8 @@ export function Sidebar() {
                           {isOpen && item.showConversations && (
                             <ConversationsList 
                               isExpanded={isOpen}
-                              onConversationClick={handleMobileLinkClick} // Close sidebar when selecting a conversation
+                              onConversationClick={handleConversationClick} // Use the new handler
+                              activePath={pathname} // Pass the current path to highlight active conversation
                             />
                           )}
                         </li>
@@ -168,6 +187,18 @@ export function Sidebar() {
           </div>
           
           <div className="mt-auto border-t border-gray-200 pt-2 sm:pt-3 dark:border-gray-800">
+            <Link 
+              href="/settings"
+              className={cn(
+                "mb-1 sm:mb-2 flex w-full items-center gap-2 sm:gap-3 rounded-md px-2 sm:px-3 py-2 text-xs sm:text-sm hover:bg-primary-50 dark:hover:bg-primary-900/30",
+                !isOpen && "justify-center px-0"
+              )}
+              onClick={handleMobileLinkClick}
+            >
+              <Settings className="size-4 sm:size-5 text-primary-500 dark:text-primary-300" />
+              {isOpen && <span className="text-bold text-gray-700 dark:text-gray-300">Settings</span>}
+            </Link>
+            
             <button 
               className={cn(
                 "mb-1 sm:mb-2 flex w-full items-center gap-2 sm:gap-3 rounded-md px-2 sm:px-3 py-2 text-xs sm:text-sm hover:bg-primary-50 dark:hover:bg-primary-900/30",

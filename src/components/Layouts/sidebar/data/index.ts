@@ -5,7 +5,7 @@ export const NAV_DATA = [
     label: "MAIN",
     items: [
       {
-        title: "Chat",
+        title: "News",
         icon: Icons.HomeIcon,
         url: "/",
         items: [],

@@ -1,34 +1,12 @@
 import { AGENT_MESSAGES, processAgentResponse } from "./utils";
-import { getAgent, mainSearchToolName } from "./llm";
+import { agent } from "./llm";
+// import { supervisor } from "./supervisor";
 import { AIMessage, HumanMessage, ToolMessage } from "@langchain/core/messages";
 import { AgentDBService } from "./db";
 import { createAdminClient } from "../supabase/admin";
 
 // Re-export for backward compatibility
 export { AGENT_MESSAGES } from "./utils";
-
-export const newsPrompt = `You provide informative responses about news topics. Current date and time is ${new Date().toISOString()}, or in another form ${new Date().toLocaleString()}. Make sure your news source is up to date
-
-You need to break a search task into 2 parts: Namely "Search" and "Analysis"
-
-On the Search step: 
-
-Too use guide:
-* FIRST: use determine_search_language to determine the most useful search language for the query. Use that language in ${mainSearchToolName} 
-* use ${mainSearchToolName} to search for news or general search result.
-* Try multiple iterations with different search queries, to diversify the search results and find the most relevant ones
-  * Almost use English to search for another termi   
-* use WebBrowser to search to parse the web page and extract the content when the search result is not complete
-* use Wikipedia when you need knowledge on topics that's less time sensitive, but proof and truth is more important.
-
-On the Analysis step: Try to
-* If the request is time sensitive (refer to a specific time frame like last week, or recently), make sure the data you receive is up to date, and ignore the old news
-* Breakdown each news source and filter out the underlying ideology. Find the common ground across sources.
-* Highlight the "truth" shared by different sources, clearly separate them from "arguments" that are only provided by each side.
-* Always see things from different angle. Go back to search for more material if you need to.
-
-Return in markdown format if you need formatting. Return in users's language (make sure you differentiate 簡體中文 and 繁體中文), 
-`
 
 export type RawMessage = {
   id: string[] | string,
@@ -75,7 +53,6 @@ function formatMessagesForAgent(messages: Array<{
   }));
 }
 
-
 /**
  * Process a user message with the agent
  */
@@ -98,15 +75,9 @@ export const processMessage = async (
     
     console.log(`📚 Agent: Including ${formattedHistory.length} messages from conversation history`);
     
-    const agent = getAgent(conversationId);
-    
-    const finalHistory = [{ role: "system", content: newsPrompt }, ...formattedHistory];
-
-    console.log(`📚 Agent: Including ${finalHistory.length} messages in final history`);
-    
     // Invoke with the complete message history
     const result = await agent.invoke(
-      { messages: finalHistory },
+      { messages: formattedHistory },
       { configurable: { thread_id: conversationId } }
     );
     

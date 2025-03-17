@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { SearchResultItem, SearchResultsList } from "./SearchResult";
+import { convertToChineseSetting } from "@/utils/ui/chinese";
 
 interface ToolResultProps {
   content: string;
@@ -115,13 +116,18 @@ function isSearchResult(item: any): item is SearchResultItem {
 export function ToolResult({ content, metadata }: ToolResultProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   
+  // Apply Chinese character conversion
+  const convertedContent = useMemo(() => {
+    return convertToChineseSetting(content);
+  }, [content]);
+
   // Parse and validate content
-  const { parsedContent, isSearchResults, isValidJson } = parseToolContent(content);
+  const { parsedContent, isSearchResults, isValidJson } = parseToolContent(convertedContent);
 
   // Render the appropriate content based on its type
   const renderContent = () => {
     if (!isValidJson) {
-      return <pre className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{content}</pre>;
+      return <pre className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{convertedContent}</pre>;
     }
 
     if (isSearchResults) {

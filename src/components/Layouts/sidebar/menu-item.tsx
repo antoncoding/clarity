@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { cva } from "class-variance-authority";
+import Link from "next/link";
 
 const menuItemBaseStyles = cva(
   "rounded-lg px-3.5 font-medium text-gray-600 transition-all duration-200 dark:text-gray-400",
@@ -22,6 +23,7 @@ interface MenuItemProps {
   children: React.ReactNode;
   isActive: boolean;
   onClick?: () => void;
+  href?: string;
 }
 
 export function MenuItem({
@@ -29,6 +31,7 @@ export function MenuItem({
   className,
   isActive,
   onClick,
+  href,
   ...props
 }: MenuItemProps) {
   const itemClasses = cn(
@@ -38,6 +41,19 @@ export function MenuItem({
     }),
     className,
   );
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        onClick={onClick}
+        className={itemClasses}
+        {...props}
+      >
+        {children}
+      </Link>
+    );
+  }
 
   return (
     <button
