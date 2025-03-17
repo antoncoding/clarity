@@ -1,6 +1,5 @@
 import { createClient } from "../../../utils/supabase/server";
 import { redirect } from "next/navigation";
-import NewsPage from "../news/page";
 
 export default async function Home() {
   const supabase = await createClient()
@@ -10,9 +9,5 @@ export default async function Home() {
     return redirect('/auth/sign-in');
   }
 
-  return (
-    <div className="h-full">
-      <NewsPage />
-    </div>
-  );
+  return redirect('/news');
 }

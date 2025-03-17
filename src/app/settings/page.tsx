@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from "react";
 import { convertToChineseSetting } from "@/utils/ui/chinese";
+import storage from 'local-storage-fallback'
+
 
 export default function SettingsPage() {
   const [chineseCharacterSetting, setChineseCharacterSetting] = useState<string>("traditional");
   
-  // Load settings from localStorage on component mount
+  // Load settings from local storage on component mount
   useEffect(() => {
-    const savedSetting = localStorage.getItem("chineseCharacterSetting");
+    const savedSetting = storage.getItem("chineseCharacterSetting");
     if (savedSetting) {
       setChineseCharacterSetting(savedSetting);
     }
@@ -17,7 +19,7 @@ export default function SettingsPage() {
   // Handle setting change
   const handleChineseSettingChange = (value: string) => {
     setChineseCharacterSetting(value);
-    localStorage.setItem("chineseCharacterSetting", value);
+    storage.setItem("chineseCharacterSetting", value);
   };
   
   // Sample text to demonstrate the conversion
