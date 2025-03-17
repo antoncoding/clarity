@@ -35,7 +35,9 @@ Base on user query, you can use multiple tool and iterations to find the most re
 
 Tool use guide:
 * use ${determineLanguage.name} to determine the most useful search language for the query. Use that language as input in ${braveNewsSearch.name} 
-* use ${braveSearch.name} to search for specific query, specific news events.
+  * If the result is not good, try search again with less specific query, and remove "searchLanguage" from the query.
+  * Don't use the term "news" in the query.
+* use ${braveSearch.name} to search for specific query, specific news or events.
 * use ${braveNewsSearch.name} to search for top news stories, if the user query is not specific and just want to know the latest news.
 * Try multiple iterations with different search queries, to diversify the search results and find the most relevant ones
 * use ${searchWikipedia.name} when you need knowledge on topics that's less time sensitive, but proof and truth is more important.
