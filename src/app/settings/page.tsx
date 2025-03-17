@@ -21,7 +21,7 @@ export default function SettingsPage() {
   };
   
   // Sample text to demonstrate the conversion
-  const sampleText = "这是简体中文示例。這是繁體中文示例。";
+  const sampleText = "中文文本示例，简体中文和繁体中文。";
   const convertedSample = convertToChineseSetting(sampleText);
 
   return (
