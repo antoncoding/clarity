@@ -23,6 +23,8 @@ export const VALID_COUNTRY_CODES = [
   "ES", "SE", "CH", "TW", "TR", "GB", "US"
 ];
 
+
+
 /**
  * Interface for the parameters required to instantiate a BraveNewsSearch
  * instance.
@@ -79,15 +81,18 @@ export class BraveNewsSearch extends StructuredTool {
         .describe("The language code for the search results. Defaults to English (en)."),
       countryCode: z.enum(VALID_COUNTRY_CODES as [string, ...string[]])
         .optional()
-        .describe("The country code to prioritize news from. Defaults to United States (US).")
+        .describe("The country code to prioritize news from. Defaults to United States (US)."),
+      freshness: z.enum(["pd", "pw", "pm", "py"])
+        .optional()
+        .describe("Filter results by discovery time: pd (last 24h), pw (last 7 days), pm (last 31 days), py (last 365 days)")
     });
   }
 
   /** @ignore */
   protected async _call(input: z.infer<typeof this.schema>): Promise<string> {
-    const { query, searchLanguage, countryCode } = input;
+    const { query, searchLanguage, countryCode, freshness } = input;
 
-    console.log(`🔍 Brave News Search Input: ${query}, ${searchLanguage}, ${countryCode}`);
+    console.log(`🔍 Brave News Search Input: ${query}, ${searchLanguage}, ${countryCode ?? ''}, ${freshness ?? ''}`);
 
     const headers = {
       "X-Subscription-Token": this.apiKey,
@@ -100,8 +105,9 @@ export class BraveNewsSearch extends StructuredTool {
     
     // Add query parameters
     searchUrl.searchParams.append("q", query);
-    if (searchLanguage) searchUrl.searchParams.append("search_lang", searchLanguage);
+    // if (searchLanguage) searchUrl.searchParams.append("search_lang", searchLanguage);
     if (countryCode) searchUrl.searchParams.append("country", countryCode);
+    if (freshness) searchUrl.searchParams.append("freshness", freshness);
 
     const response = await fetch(searchUrl.toString(), { headers });
 
@@ -113,10 +119,11 @@ export class BraveNewsSearch extends StructuredTool {
     const newsSearchResults = parsedResponse.results;
     const finalResults = Array.isArray(newsSearchResults)
       ? newsSearchResults.map(
-          (item: { title?: string; url?: string; description?: string }) => ({
+          (item: { title?: string; url?: string; description?: string; age?: number }) => ({
             title: item.title,
             link: item.url,
             snippet: item.description,
+            age: item.age,
           })
         )
       : [];

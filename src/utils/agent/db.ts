@@ -2,6 +2,21 @@ import { createClient } from "@/utils/supabase/server";
 import { SupabaseClient } from "@supabase/supabase-js";
 
 /**
+ * Generate a random 8-character alphanumeric referral code
+ */
+function generateReferralCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Removed similar looking characters (0/O, 1/I)
+  let result = '';
+  
+  for (let i = 0; i < 8; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  
+  return result;
+}
+  
+
+/**
  * Database service class for agent-related database operations
  */
 export class AgentDBService {
@@ -251,7 +266,7 @@ export class AgentDBService {
       return false;
     }
   }
-  
+
   /**
    * Update user-level usage statistics
    */
@@ -290,10 +305,14 @@ export class AgentDBService {
           return false;
         }
       } else {
+        // Generate a user-friendly referral code
+        const referralCode = generateReferralCode();
+        
         // Create new entry
         const insertData = {
           user_id: userId,
           lifetime_usage_cost: cost,
+          referral_code: referralCode,
           updated_at: new Date().toISOString()
         };
         
@@ -338,163 +357,4 @@ export class AgentDBService {
     }
   }
   
-  /**
-   * Get usage summary for a specific conversation
-   */
-  async getConversationUsageSummary(conversationId: string) {
-    try {
-      const { data, error } = await this.client
-        .from("conversation_usage")
-        .select("*")
-        .eq("conversation_id", conversationId)
-        .single();
-        
-      if (error) {
-        console.error("Error fetching conversation usage summary:", error);
-        return null;
-      }
-      
-      return data;
-    } catch (error) {
-      console.error("Error in getConversationUsageSummary:", error);
-      return null;
-    }
-  }
-  
-  /**
-   * Get usage summary for a specific user
-   */
-  async getUserUsageSummary(userId: string) {
-    try {
-      const { data, error } = await this.client
-        .from("user_accounts")
-        .select("*")
-        .eq("user_id", userId)
-        .single();
-        
-      if (error) {
-        console.error("Error fetching user usage summary:", error);
-        return null;
-      }
-      
-      return data;
-    } catch (error) {
-      console.error("Error in getUserUsageSummary:", error);
-      return null;
-    }
-  }
-  
-  /**
-   * Update user available credits
-   */
-  async updateUserCredits(userId: string, credits: number) {
-    try {
-      const { data: existingData, error: fetchError } = await this.client
-        .from("user_accounts")
-        .select("available_credits")
-        .eq("user_id", userId)
-        .single();
-        
-      if (fetchError && fetchError.code !== 'PGRST116') {
-        console.error("Error fetching user credits:", fetchError);
-        return false;
-      }
-      
-      if (existingData) {
-        // Update existing entry
-        const { error: updateError } = await this.client
-          .from("user_accounts")
-          .update({
-            available_credits: existingData.available_credits + credits,
-            updated_at: new Date().toISOString()
-          })
-          .eq("user_id", userId);
-          
-        if (updateError) {
-          console.error("Error updating user credits:", updateError);
-          return false;
-        }
-      } else {
-        // Create new entry
-        const { error: insertError } = await this.client
-          .from("user_accounts")
-          .insert({
-            user_id: userId,
-            available_credits: credits,
-            updated_at: new Date().toISOString()
-          });
-          
-        if (insertError) {
-          console.error("Error inserting user credits:", insertError);
-          return false;
-        }
-      }
-      
-      return true;
-    } catch (error) {
-      console.error("Error in updateUserCredits:", error);
-      return false;
-    }
-  }
-  
-  /**
-   * Get user referral information
-   */
-  async getUserReferralInfo(userId: string) {
-    try {
-      const { data, error } = await this.client
-        .from("user_accounts")
-        .select("referral_code, referred_by")
-        .eq("user_id", userId)
-        .single();
-        
-      if (error) {
-        console.error("Error fetching user referral info:", error);
-        return null;
-      }
-      
-      return data;
-    } catch (error) {
-      console.error("Error in getUserReferralInfo:", error);
-      return null;
-    }
-  }
-  
-  /**
-   * Set user's referrer
-   */
-  async setUserReferrer(userId: string, referrerCode: string) {
-    try {
-      // First, get the referrer's user ID
-      const { data: referrerData, error: referrerError } = await this.client
-        .from("user_accounts")
-        .select("user_id")
-        .eq("referral_code", referrerCode)
-        .single();
-        
-      if (referrerError || !referrerData) {
-        console.error("Invalid referral code or error fetching referrer:", referrerError);
-        return false;
-      }
-      
-      // Update the user's referred_by field
-      const { error: updateError } = await this.client
-        .from("user_accounts")
-        .update({
-          referred_by: referrerData.user_id,
-          updated_at: new Date().toISOString()
-        })
-        .eq("user_id", userId);
-        
-      if (updateError) {
-        console.error("Error setting user referrer:", updateError);
-        return false;
-      }
-      
-      return true;
-    } catch (error) {
-      console.error("Error in setUserReferrer:", error);
-      return false;
-    }
-  }
 }
