@@ -1,10 +1,17 @@
-import { Tool, ToolParams } from "@langchain/core/tools";
+import { ToolParams } from "@langchain/core/tools";
+import { StructuredTool } from "@langchain/core/tools";
 import * as duckDuckScrape from "duck-duck-scrape";
+import { z } from "zod";
 
 // Re-export types from duck-duck-scrape
 export type { SearchOptions } from "duck-duck-scrape";
 export { SafeSearchType, SearchTimeType } from "duck-duck-scrape";
 
+const DEFAULT_MAX_RESULTS = 10;
+
+/**
+ * Interface defining the parameters for the CustomDuckDuckGoSearch class
+ */
 export interface CustomDuckDuckGoSearchParameters extends ToolParams {
   /**
    * The search options for DuckDuckGo search
@@ -17,12 +24,10 @@ export interface CustomDuckDuckGoSearchParameters extends ToolParams {
   maxResults?: number;
 }
 
-const DEFAULT_MAX_RESULTS = 10;
-
 /**
- * Custom DuckDuckGo search tool that properly handles the duck-duck-scrape API
+ * Class for performing web searches using DuckDuckGo
  */
-export class CustomDuckDuckGoSearch extends Tool {
+export class CustomDuckDuckGoSearch extends StructuredTool {
   private searchOptions?: duckDuckScrape.SearchOptions;
   private maxResults = DEFAULT_MAX_RESULTS;
 
@@ -43,41 +48,29 @@ export class CustomDuckDuckGoSearch extends Tool {
   description =
     "A search engine. Useful for when you need to answer questions about current events. Input should be a search query.";
 
-  async _call(input: string): Promise<string> {
+  schema = z.object({
+    query: z.string().describe("The search query string")
+  });
+
+  async _call(input: z.infer<typeof this.schema>): Promise<string> {
     try {
+      const { query } = input;
+      
       // Properly access the search function through the duckDuckGo property
-      const searchResults = await duckDuckScrape.search(input, this.searchOptions);
+      const searchResults = await duckDuckScrape.search(query, this.searchOptions);
       
       return JSON.stringify(
         searchResults.results
-          .map((result) => ({
+          .map((result: any) => ({
             title: result.title,
             link: result.url,
             snippet: result.description,
           }))
           .slice(0, this.maxResults)
       );
-    } catch (error: any) { 
-      console.error("Error performing DuckDuckGo search:", error);
-      
-      // Return a friendly message instead of throwing
-      const errorMessage = error?.message || "Unknown error";
-      const isRateLimited = errorMessage.includes("detected an anomaly") || 
-                            errorMessage.includes("too quickly");
-      
-      if (isRateLimited) {
-        return JSON.stringify({
-          error: true,
-          message: "DuckDuckGo search rate limited. Try using a different search strategy or tool.",
-          suggestion: "Consider using Wikipedia, WebBrowser, or try a different search query."
-        });
-      } else {
-        return JSON.stringify({
-          error: true,
-          message: `DuckDuckGo search failed: ${errorMessage}`,
-          suggestion: "Try using a different search tool or reformulate your query."
-        });
-      }
+    } catch (error) {
+      console.error("Error with DuckDuckGo search:", error);
+      return "[]"; // Return empty results on error
     }
   }
 }

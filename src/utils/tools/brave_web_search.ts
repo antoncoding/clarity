@@ -1,5 +1,6 @@
 import { getEnvironmentVariable } from "@langchain/core/utils/env";
-import { Tool } from "@langchain/core/tools";
+import { StructuredTool } from "@langchain/core/tools";
+import { z } from "zod";
 
 /**
  * Interface for the parameters required to instantiate a BraveSearch
@@ -10,12 +11,12 @@ export interface BraveSearchParams {
 }
 
 /**
- * Class for interacting with the Brave Search engine. It extends the Tool
+ * Class for interacting with the Brave Search engine. It extends the StructuredTool
  * class and requires an API key to function. The API key can be passed in
  * during instantiation or set as an environment variable named
  * 'BRAVE_SEARCH_API_KEY'.
  */
-export class BraveSearch extends Tool {
+export class BraveSearch extends StructuredTool {
   static lc_name() {
     return "BraveSearch";
   }
@@ -24,6 +25,10 @@ export class BraveSearch extends Tool {
 
   description =
     "a search engine. useful for when you need to answer questions about current events. input should be a search query.";
+
+  schema = z.object({
+    query: z.string().describe("The search query string")
+  });
 
   apiKey: string;
 
@@ -44,18 +49,20 @@ export class BraveSearch extends Tool {
   }
 
   /** @ignore */
-  async _call(input: string): Promise<string> {
+  async _call(input: z.infer<typeof this.schema>): Promise<string> {
+    const { query } = input;
+    
     const headers = {
       "X-Subscription-Token": this.apiKey,
       Accept: "application/json",
     };
     const searchUrl = new URL(
       `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(
-        input
+        query
       )}`
     );
 
-    console.log(`🔍 Brave Simple Web Search: ${input}`);
+    console.log(`🔍 Brave Simple Web Search: ${query}`);
 
     const response = await fetch(searchUrl, { headers });
 

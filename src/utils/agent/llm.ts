@@ -4,6 +4,8 @@ import { determineLanguage } from "../tools/determine_language";
 import { BraveSearch } from "../tools/brave_web_search";
 import { BraveNewsSearch } from "../tools/brave_news_search";
 import { WikipediaQueryRun } from "@langchain/community/tools/wikipedia_query_run";
+import { GoogleSearch } from "../tools/google_search";
+import { NewsDataSearch } from "../tools/newsdata_search";
 
 const model = new ChatAnthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -15,9 +17,13 @@ const braveSearch = new BraveSearch({
   apiKey: process.env.BRAVE_SEARCH_API_KEY,
 });
 
-const braveNewsSearch = new BraveNewsSearch({
-  apiKey: process.env.BRAVE_SEARCH_API_KEY,
-});
+// const braveNewsSearch = new BraveNewsSearch({
+//   apiKey: process.env.BRAVE_SEARCH_API_KEY,
+// });
+
+const googleNewsSearch = new GoogleSearch();
+
+const newsDataSearch = new NewsDataSearch();
 
 const searchWikipedia = new WikipediaQueryRun({
     topKResults: 5,
@@ -36,11 +42,16 @@ Base on user query, you can use multiple tool and iterations to find the most re
 Tool use guide:
 * use ${determineLanguage.name} to determine the most useful search language and intent for the search
   * You must respect the language, intent determined by ${determineLanguage.name}, and use this result to search for news
-* ${braveNewsSearch}:
-  * Used for general news query intent like "Weekly business update", "Crypto news today", "Sport in Barcelona", use ${braveNewsSearch.name} 
-  * try to translate the intend into the language determined by ${determineLanguage.name} as "query", and set "searchLanguage" and "country" properly for ${braveNewsSearch.name} 
+* ${googleNewsSearch.name}:
+  * Used for general news query intent like "Weekly business update", "Crypto news today", "Sport in Barcelona", use ${googleNewsSearch.name} 
+  * try to translate the intend into the language determined by ${determineLanguage.name} as "query", and set "searchLanguage" and "country" properly for ${googleNewsSearch.name} 
   * Make the query short and concise, remove redundent words like "news"
   * If the result is not good, try search again with less specific query, and remove "searchLanguage" from the query.
+* ${newsDataSearch.name}:
+  * Specialized for recent news articles with excellent coverage and categorization
+  * Particularly useful for category-specific news (business, politics, sports, technology, etc.)
+  * Supports multiple languages and can filter by category
+  * Use when you need latest news with good source attribution
 * ${braveSearch.name}:
   * to search for specific query, specific news or events.
   * try to translate the intend into the language determined by ${determineLanguage.name} as input query in ${braveSearch.name} 
@@ -69,7 +80,7 @@ IMPORTANT: at the end, double check that all the links and references are well-f
 // Create the agent with just the search tool
 export const agent = createReactAgent({
   llm: model,
-  tools: [determineLanguage, braveSearch, braveNewsSearch, searchWikipedia],
+  tools: [determineLanguage, braveSearch, googleNewsSearch, newsDataSearch, searchWikipedia],
   prompt: newsPrompt,
   // dont' use check pointer, everytime we refeed everything back from db
 });

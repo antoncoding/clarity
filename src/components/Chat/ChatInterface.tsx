@@ -12,6 +12,7 @@ import {
   sendMessageToApi
 } from "@/utils/db";
 import { ToolResult } from "./ToolResult";
+import { ToolCall } from "./ToolCall";
 import { MarkdownContent } from "./MarkdownContent";
 
 interface MessageProps {
@@ -46,12 +47,19 @@ const AIMessage = ({ content, isProcessing, metadata, message_type }: MessagePro
         </div>
       ) : (
         <div className={`prose dark:prose-invert max-w-none ${
-          message_type === "tool_call" || message_type === "tool_result"
-            ? "text-gray-500 dark:text-gray-400 text-xs sm:text-sm font-light italic"
+          message_type === "tool_result"
+            ? "text-gray-500 dark:text-gray-400 text-xs sm:text-sm font-light"
+            : message_type === "tool_call"
+            ? "font-normal"
             : "font-light text-sm sm:text-base"
         }`}>
           {message_type === "tool_result" ? (
             <ToolResult 
+              content={content}
+              metadata={metadata}
+            />
+          ) : message_type === "tool_call" ? (
+            <ToolCall
               content={content}
               metadata={metadata}
             />
