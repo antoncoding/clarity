@@ -61,7 +61,6 @@ const AIMessage = ({ content, isProcessing, metadata, message_type }: MessagePro
           ) : message_type === "tool_call" ? (
             <ToolCall
               content={content}
-              metadata={metadata}
             />
           ) : (
             <MarkdownContent content={content} />

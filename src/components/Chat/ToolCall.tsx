@@ -1,11 +1,8 @@
-import { convertToChineseSetting } from "@/utils/ui/chinese";
-
 interface ToolCallProps {
   content: string;
-  metadata: any;
 }
 
-export function ToolCall({ content, metadata }: ToolCallProps) {
+export function ToolCall({ content }: ToolCallProps) {
   // Parse the content to get tool details
   interface ToolUse {
     type: string;
@@ -25,16 +22,44 @@ export function ToolCall({ content, metadata }: ToolCallProps) {
   }
   
   let toolUses: ToolUse[] = [];
+  let parsedContent: any = null;
+  
+  // First, safely verify and parse the content
   try {
-    const contentData = typeof content === 'string' ? JSON.parse(content) : content;
-    toolUses = Array.isArray(contentData) ? contentData : [contentData];
+    // Handle the case when content is undefined or null
+    if (!content) {
+      return <div className="text-gray-600 dark:text-gray-400 text-xs">No tool call data available</div>;
+    }
+    
+    // If it's already an object, use it directly
+    if (typeof content !== 'string') {
+      parsedContent = content;
+    } else {
+      // Check if it's a valid JSON string before parsing
+      try {
+        parsedContent = JSON.parse(content);
+      } catch (parseError) {
+        console.error("Failed to parse tool call JSON:", parseError);
+        return <pre className="text-gray-600 dark:text-gray-400 text-xs whitespace-pre-wrap font-zen">{content}</pre>;
+      }
+    }
+    
+    // Now safely handle the parsed content
+    if (Array.isArray(parsedContent)) {
+      toolUses = parsedContent;
+    } else if (parsedContent && typeof parsedContent === 'object') {
+      toolUses = [parsedContent];
+    } else {
+      // If it's not an array or object, show the raw content
+      return <pre className="text-gray-600 dark:text-gray-400 text-xs whitespace-pre-wrap font-zen">{content}</pre>;
+    }
   } catch (error) {
-    console.error("Failed to parse tool call content:", error);
-    return <pre className="text-gray-600 dark:text-gray-400 text-sm whitespace-pre-wrap">{content}</pre>;
+    console.error("Unexpected error processing tool call content:", error);
+    return <pre className="text-gray-600 dark:text-gray-400 text-xs whitespace-pre-wrap font-zen">{String(content)}</pre>;
   }
 
   if (toolUses.length === 0) {
-    return <pre className="text-gray-600 dark:text-gray-400 text-sm whitespace-pre-wrap">{content}</pre>;
+    return <pre className="text-gray-600 dark:text-gray-400 text-xs whitespace-pre-wrap font-zen text-sm">{content}</pre>;
   }
 
   // Use the first tool use in the array
@@ -89,7 +114,7 @@ export function ToolCall({ content, metadata }: ToolCallProps) {
     }
     case 'newsdata-search':
     case 'newsdata_search': {
-      let additionalInfo = toolInput.category ? ` in ${toolInput.category} category` : '';
+      const additionalInfo = toolInput.category ? ` in ${toolInput.category} category` : '';
       displayText = `📰 Searching News for: "${toolInput.query || 'unknown query'}"${additionalInfo}`;
       break;
     }
@@ -109,7 +134,7 @@ export function ToolCall({ content, metadata }: ToolCallProps) {
   }
 
   return (
-    <div className="text-gray-800 dark:text-gray-200 text-xs">
+    <div className="text-gray-800 dark:text-gray-200 text-xs font-normal">
       {displayText}
     </div>
   );
