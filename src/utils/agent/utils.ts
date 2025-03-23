@@ -98,14 +98,9 @@ export function parseAgentMessages(rawMessages: (AIMessage | HumanMessage | Tool
       
       // Handle AI messages
       if (msg instanceof AIMessage) {
-        // Get the content, handling both string and array formats
-        const content = extractMessageContent(msg.content);
         
-        // Skip temporary processing messages
-        if (content === AGENT_MESSAGES.ERROR || content === "Processing your message...") {
-          return null;
-        }
-        
+        console.log("AI Message", JSON.stringify(msg, null, 2))
+
         const hasToolCalls = msg.tool_calls?.length ?? 0 > 0;
         const isLastAiMessage = aiMessages.indexOf(msg) === lastAiMessageIndex;
         

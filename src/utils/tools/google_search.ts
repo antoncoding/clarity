@@ -60,7 +60,6 @@ export class GoogleSearch extends StructuredTool {
   protected createInputSchema() {
     return z.object({
       query: z.string().describe("The search query for finding information"),
-      num: z.number().min(1).max(10).optional().default(5).describe("Number of search results to return. Defaults to 5, max is 10."),
       safeSearch: z.enum(["off", "medium", "high"]).optional().describe("Safety level for the search"),
       lr: z.string().optional().describe("Language restriction. e.g., 'lang_en' for English"),
       dateRestrict: z.string().optional().describe("Date restriction in format [dN, wN, mN, yN] where N is a number. e.g., 'd7' for last 7 days")
@@ -69,9 +68,9 @@ export class GoogleSearch extends StructuredTool {
 
   /** @ignore */
   protected async _call(input: z.infer<typeof this.schema>): Promise<string> {
-    const { query, num, safeSearch, lr, dateRestrict } = input;
+    const { query, safeSearch, lr, dateRestrict } = input;
 
-    console.log(`🔍 Google Search Input: ${query}, Results: ${num}`);
+    console.log(`🔍 Google Search Input: ${query}`);
 
     const url = new URL("https://www.googleapis.com/customsearch/v1");
     
@@ -79,9 +78,9 @@ export class GoogleSearch extends StructuredTool {
     url.searchParams.append("key", this.apiKey);
     url.searchParams.append("cx", this.cseId);
     url.searchParams.append("q", query);
+    url.searchParams.append("num", "10");
     
     // Add optional parameters
-    if (num) url.searchParams.append("num", num.toString());
     if (safeSearch) url.searchParams.append("safe", safeSearch);
     if (lr) url.searchParams.append("lr", lr);
     if (dateRestrict) url.searchParams.append("dateRestrict", dateRestrict);
