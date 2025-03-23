@@ -172,6 +172,40 @@ export class AgentDBService {
   }
   
   /**
+   * Insert a single agent message
+   */
+  async insertAgentMessage(message: {
+    conversation_id: string;
+    content: string;
+    sender: string;
+    status: string;
+    message_type?: string;
+    metadata?: any;
+  }) {
+    try {
+      console.log(`💾 DB: Inserting agent message of type: ${message.message_type} to conversation: ${message.conversation_id}`);
+      
+      const { data, error } = await this.client
+        .from("messages")
+        .insert(message)
+        .select("id")
+        .single();
+        
+      if (error) {
+        console.error("❌ DB: Error inserting agent message:", error);
+        console.error("❌ DB: Failed message content:", message.content.substring(0, 100));
+        return null;
+      }
+      
+      console.log(`✅ DB: Successfully inserted agent message with ID: ${data.id}`);
+      return data;
+    } catch (error) {
+      console.error("❌ DB: Unexpected error in insertAgentMessage:", error);
+      return null;
+    }
+  }
+  
+  /**
    * Update message status
    */
   async updateMessageStatus(messageId: string, status: string) {

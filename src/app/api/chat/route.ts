@@ -90,41 +90,16 @@ async function processNewUserMessage(
   conversationId: string,
   userId: string
 ) {
-  // Initialize the database service for this specific user
-  const dbService = await AgentDBService.createForUser(userId);
-
   try {
     console.log(`🤖 Processing agent response for message: ${userMessageId}`);
     
-    // Call the agent to process the message
-    const { response, messages } = await processMessage(conversationId, userMessage, userId);
+    // Call the agent to process the message - messages will be streamed and saved to DB directly
+    const result = await processMessage(conversationId, userMessage, userId, userMessageId);
     
-    console.log(`✅ Agent received response of length: ${response.length}`);
-    console.log(`📊 Agent generated ${messages.length} total messages`);
-
-    // Store ALL messages from the agent (thoughts, tool operations, and final messages)
-    if (messages.length > 0) {
-      console.log(`🧠 Inserting ${messages.length} messages & thoughts`);
-      
-      // Prepare the messages for insertion
-      const messagesToInsert = messages.map((m: any) => ({
-        conversation_id: conversationId,
-        content: m.content,
-        sender: "agent",
-        status: "completed",
-        message_type: m.type,
-        metadata: m.metadata || {}
-      }));
-      
-      // Insert all messages
-      await dbService.insertAgentMessages(messagesToInsert);
-
-      // change the user message status to responded
-      await dbService.updateMessageStatus(userMessageId, "responded");
-    }
-
     console.log(`✅ Agent response completed for message: ${userMessageId}`);
+    return result !== null;
   } catch (error) {
     console.error("❌ Error in agent processing:", error);
+    return false;
   }
 }
