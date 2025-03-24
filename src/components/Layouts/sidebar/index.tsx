@@ -32,25 +32,54 @@ const NavItem = ({
   subMenu, 
   isSidebarExpanded 
 }: NavItemProps) => {
+  const [isSubMenuCollapsed, setIsSubMenuCollapsed] = useState(false);
+
   return (
     <li className="mb-1">
-      <MenuItem
-        className={cn(
-          "flex items-center gap-2 sm:gap-3 py-2 sm:py-3 text-xs sm:text-sm",
-          !isSidebarExpanded && "justify-center px-0"
+      <div className="flex items-center gap-1">
+        <MenuItem
+          className={cn(
+            "flex-1 flex items-center gap-2 sm:gap-3 py-2 sm:py-3 text-xs sm:text-sm",
+            !isSidebarExpanded && "justify-center px-0"
+          )}
+          isActive={isActive}
+          onClick={onClick}
+          href={href}
+        >
+          <Icon
+            className="size-4 sm:size-5 shrink-0 text-primary-600 dark:text-primary-300"
+            aria-hidden="true"
+          />
+          {isSidebarExpanded && <span className="text-xs sm:text-sm">{title}</span>}
+        </MenuItem>
+        
+        {isSidebarExpanded && subMenu && (
+          <button
+            onClick={() => setIsSubMenuCollapsed(!isSubMenuCollapsed)}
+            className={cn(
+              "p-1.5 rounded-md hover:bg-primary-50 dark:hover:bg-primary-900/30",
+              "text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-300",
+              "transition-all duration-300"
+            )}
+            aria-label={isSubMenuCollapsed ? "Show conversations" : "Hide conversations"}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className={cn(
+                "h-4 w-4 transition-transform duration-300",
+                isSubMenuCollapsed ? "rotate-180" : ""
+              )}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
         )}
-        isActive={isActive}
-        onClick={onClick}
-        href={href}
-      >
-        <Icon
-          className="size-4 sm:size-5 shrink-0 text-primary-600 dark:text-primary-300"
-          aria-hidden="true"
-        />
-        {isSidebarExpanded && <span className="text-xs sm:text-sm">{title}</span>}
-      </MenuItem>
+      </div>
       
-      {isSidebarExpanded && subMenu && (
+      {isSidebarExpanded && subMenu && !isSubMenuCollapsed && (
         <div className="mt-1">{subMenu}</div>
       )}
     </li>

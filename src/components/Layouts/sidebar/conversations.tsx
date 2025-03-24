@@ -189,7 +189,7 @@ export function ConversationsList({
         [&::-webkit-scrollbar-thumb]:dark:bg-gray-800 [&::-webkit-scrollbar-thumb]:hover:bg-gray-300
         [&::-webkit-scrollbar-thumb]:dark:hover:bg-gray-700">
         {/* New Chat option with Collapse button */}
-        <li className="flex items-center gap-1 sticky top-0 z-10 py-1 transition-all duration-300">
+        <li className="flex items-center gap-1 sticky top-0 z-20 py-1 transition-all duration-300 bg-white dark:bg-gray-dark">
           <MenuItem
             className={cn(
               "flex-1 flex items-center gap-3 py-1 text-xs font-normal transition-all duration-300",
@@ -227,7 +227,7 @@ export function ConversationsList({
         </li>
 
         {/* List of existing conversations */}
-        <div className="transition-all duration-300">
+        <div className="transition-all duration-300 relative z-10">
           {(isListCollapsed ? [activeConversation].filter(Boolean) : conversations).map((conversation) => {
             if (!conversation) return null;
             
