@@ -115,70 +115,65 @@ function extractContentFromOutput(output: ModelOutput | null | undefined): {
   toolCalls: ToolCall[] | null; 
   messageType: MessageType 
 } {
-  let finalContent = "";
-  let toolCalls: ToolCall[] | null = null;
-  let messageType = MessageType.THOUGHT;
   
-  if (!output || !output.content) {
-    return { finalContent, toolCalls, messageType };
+  if (!output || (!output.content && !output.tool_calls?.length)) {
+    console.warn(`⚠️ WARNING: Found empty output`, JSON.stringify(output));
+    return { finalContent: "", toolCalls: null, messageType: MessageType.MESSAGE };
   }
   
   const rawContent = output.content;
   console.log(`💬 Raw content type: ${typeof rawContent}`);
   
-  // Handle string content (possibly JSON)
-  if (typeof rawContent === 'string') {
-    if (rawContent.trim().startsWith('[') && rawContent.trim().endsWith(']')) {
-      try {
-        console.log(`💬 Detected JSON array in string, parsing...`);
-        const parsedContent = JSON.parse(rawContent);
-        
-        if (Array.isArray(parsedContent)) {
-          const result = extractContentFromArray(parsedContent as ContentItem[]);
-          finalContent = result.finalContent;
-          toolCalls = result.toolCalls;
-        } else {
-          finalContent = rawContent;
-        }
-      } catch (e) {
-        console.log(`💬 Error parsing JSON: ${e}, using raw content`);
-        finalContent = rawContent;
-      }
-    } else {
-      finalContent = rawContent;
-    }
-    
-    messageType = toolCalls && toolCalls.length > 0 ? MessageType.TOOL_CALL : MessageType.MESSAGE;
-  }
   // Handle array content directly
-  else if (Array.isArray(rawContent)) {
+  if (Array.isArray(rawContent)) {
     console.log(`💬 Content is direct array with ${rawContent.length} items`);
-    const result = extractContentFromArray(rawContent as ContentItem[]);
-    finalContent = result.finalContent;
-    toolCalls = result.toolCalls;
-    messageType = toolCalls && toolCalls.length > 0 ? MessageType.TOOL_CALL : MessageType.MESSAGE;
+    const { finalContent, toolCalls } = extractContentFromArray(rawContent as ContentItem[]);
+    return {
+      finalContent,
+      toolCalls,
+      messageType: toolCalls && toolCalls.length > 0 ? MessageType.TOOL_CALL : MessageType.MESSAGE
+    }
   }
   // Handle object with text property
   else if (typeof rawContent === 'object' && rawContent !== null && 'text' in rawContent) {
-    finalContent = (rawContent as TextContentItem).text;
-    messageType = MessageType.MESSAGE;
+    const finalContent = (rawContent as TextContentItem).text;
+    return {
+      finalContent,
+      toolCalls: null,
+      messageType: MessageType.MESSAGE
+    }
   }
   // Unknown structure, try to stringify
   else if (rawContent) {
     try {
-      finalContent = JSON.stringify(rawContent);
+      const finalContent = JSON.stringify(rawContent);
+      return {
+        finalContent,
+        toolCalls: null,
+        messageType: MessageType.MESSAGE
+      }
     } catch {
-      finalContent = "Error: Could not extract content";
+      console.error(`❌ Error parsing JSON: ${rawContent.slice(0, 20)}`);
+      return {
+        finalContent: rawContent,
+        toolCalls: null,
+        messageType: MessageType.MESSAGE
+      }
     }
-    messageType = MessageType.MESSAGE;
   }
   
   // Check for tool calls in the output directly
-  if (!toolCalls && output.tool_calls && Array.isArray(output.tool_calls)) {
-    toolCalls = output.tool_calls;
-    messageType = MessageType.TOOL_CALL;
-    console.log(`🔧 Found tool calls directly in tool_calls`);
+  if (!output.tool_calls || !Array.isArray(output.tool_calls)) {
+    return {
+      finalContent: "",
+      toolCalls: null,
+      messageType: MessageType.MESSAGE
+    }
   }
+  const toolCalls = output.tool_calls;
+  const finalContent = toolCalls.length > 0 ? JSON.stringify(toolCalls) : "";
+  const messageType = MessageType.TOOL_CALL;
+  console.log(`🔧 Found tool calls directly in tool_calls`);
   
   return { finalContent, toolCalls, messageType };
 }
@@ -287,11 +282,12 @@ export const processMessage = async (
 
     try {
       for await (const event of eventStream) {
-        // Handle chat model completion
+        
+        // Handle chat model completion: When model is done out putting 1 LLM response
         if (event.event === EventType.ON_CHAT_MODEL_END) {
           console.log(`💬 Chat model completed`);
           
-          // Extract content from output
+          // Extract content from output: LLM response with tool calls
           const { finalContent, toolCalls, messageType } = extractContentFromOutput(event.data?.output as ModelOutput);
           const usageMetadata = event.data?.output?.usage_metadata || null;
           
@@ -301,11 +297,6 @@ export const processMessage = async (
           }
           
           console.log(`💬 Extracted content type: ${typeof finalContent}, length: ${finalContent.length}`);
-          
-          // Verify content extraction
-          if (finalContent.trim().startsWith('[') && finalContent.trim().endsWith(']')) {
-            console.warn(`⚠️ WARNING: Content still appears to be a JSON array - extraction likely failed`);
-          }
           
           // Save to database
           try {

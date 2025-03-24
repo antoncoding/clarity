@@ -17,6 +17,7 @@ For example:
 * If the user message is about recent news in Taiwan, you should return {language: ["繁體中文"]}
 * If the user message is like "法國 政治", you should return {language: ["France"], intent: "politique"}
 * If the user wants to learn "technology de Japón", you should return {language: ["日本語"], intent: "テクノロジー"}
+* If the user wants to know "news in Barcelona", you should return {language: ["Catalàn"], intent: "Barcelona"}
 * If the query is about particular people like "Trump and Luka Doncic", you should return [language: ["English", "slovenski"]]
 * If you're unsure, or the topic is broad, or an international event, sports, or organization, you should return {language: ["English"]}
 

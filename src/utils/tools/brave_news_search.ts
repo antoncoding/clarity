@@ -4,7 +4,7 @@ import { z } from "zod";
 import { ToolName } from "../toolNames";
 
 /**
- * Array of valid search language codes supported by Brave News Search API.
+ * NOT USED: Array of valid search language codes supported by Brave News Search API.
  */
 export const VALID_SEARCH_LANGUAGES = [
   "ar", "eu", "bn", "bg", "ca", "zh-hans", "zh-hant", "hr", "cs", "da",
@@ -15,7 +15,7 @@ export const VALID_SEARCH_LANGUAGES = [
 ];
 
 /**
- * Array of valid country codes supported by Brave News Search API.
+ * NOT USED:Array of valid country codes supported by Brave News Search API.
  */
 export const VALID_COUNTRY_CODES = [
   "ALL", "AR", "AU", "AT", "BE", "BR", "CA", "CL", "DK", "FI", 
@@ -76,13 +76,6 @@ export class BraveNewsSearch extends StructuredTool {
   protected createInputSchema() {
     return z.object({
       query: z.string().describe("The search query for finding news articles"),
-      searchLanguage: z.enum(VALID_SEARCH_LANGUAGES as [string, ...string[]])
-        .optional()
-        .default("en")
-        .describe("The language code for the search results. Defaults to English (en)."),
-      countryCode: z.enum(VALID_COUNTRY_CODES as [string, ...string[]])
-        .optional()
-        .describe("The country code to prioritize news from. Defaults to United States (US)."),
       freshness: z.enum(["pd", "pw", "pm", "py"])
         .optional()
         .describe("Filter results by discovery time: pd (last 24h), pw (last 7 days), pm (last 31 days), py (last 365 days)")
@@ -91,9 +84,9 @@ export class BraveNewsSearch extends StructuredTool {
 
   /** @ignore */
   protected async _call(input: z.infer<typeof this.schema>): Promise<string> {
-    const { query, searchLanguage, countryCode, freshness } = input;
+    const { query, freshness } = input;
 
-    console.log(`🔍 Brave News Search Input: ${query}, ${searchLanguage}, ${countryCode ?? ''}, ${freshness ?? ''}`);
+    console.log(`🔍 Brave News Search Input: ${query},${freshness ?? ''}`);
 
     const headers = {
       "X-Subscription-Token": this.apiKey,
@@ -107,7 +100,6 @@ export class BraveNewsSearch extends StructuredTool {
     // Add query parameters
     searchUrl.searchParams.append("q", query);
     // if (searchLanguage) searchUrl.searchParams.append("search_lang", searchLanguage);
-    if (countryCode) searchUrl.searchParams.append("country", countryCode);
     if (freshness) searchUrl.searchParams.append("freshness", freshness);
 
     const response = await fetch(searchUrl.toString(), { headers });

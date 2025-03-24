@@ -60,15 +60,13 @@ export class GoogleSearch extends StructuredTool {
   protected createInputSchema() {
     return z.object({
       query: z.string().describe("The search query for finding information"),
-      safeSearch: z.enum(["off", "medium", "high"]).optional().describe("Safety level for the search"),
-      lr: z.string().optional().describe("Language restriction. e.g., 'lang_en' for English"),
       dateRestrict: z.string().optional().describe("Date restriction in format [dN, wN, mN, yN] where N is a number. e.g., 'd7' for last 7 days")
     });
   }
 
   /** @ignore */
   protected async _call(input: z.infer<typeof this.schema>): Promise<string> {
-    const { query, safeSearch, lr, dateRestrict } = input;
+    const { query, dateRestrict } = input;
 
     console.log(`🔍 Google Search Input: ${query}`);
 
@@ -81,8 +79,6 @@ export class GoogleSearch extends StructuredTool {
     url.searchParams.append("num", "10");
     
     // Add optional parameters
-    if (safeSearch) url.searchParams.append("safe", safeSearch);
-    if (lr) url.searchParams.append("lr", lr);
     if (dateRestrict) url.searchParams.append("dateRestrict", dateRestrict);
 
     const response = await fetch(url.toString());

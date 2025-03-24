@@ -2,7 +2,6 @@ import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { ChatAnthropic } from "@langchain/anthropic";
 import { determineLanguage } from "../tools/determine_language";
 import { BraveSearch } from "../tools/brave_web_search";
-// import { BraveNewsSearch } from "../tools/brave_news_search";
 import { WikipediaQueryRun } from "@langchain/community/tools/wikipedia_query_run";
 import { GoogleSearch } from "../tools/google_search";
 import { NewsDataSearch } from "../tools/newsdata_search";
@@ -16,10 +15,6 @@ const model = new ChatAnthropic({
 const braveSearch = new BraveSearch({
   apiKey: process.env.BRAVE_SEARCH_API_KEY,
 });
-
-// const braveNewsSearch = new BraveNewsSearch({
-//   apiKey: process.env.BRAVE_SEARCH_API_KEY,
-// });
 
 const googleNewsSearch = new GoogleSearch();
 
@@ -42,24 +37,30 @@ Base on user query, you can use multiple tool and iterations to find the most re
 Tool use guide:
 * use ${determineLanguage.name} to determine the most useful search language and intent for the search
   * You must respect the language, intent determined by ${determineLanguage.name}, and use this result to search for news
+
+## News Search Tools
+* ${newsDataSearch.name}:
+  * Specialized for recent news which is most up to date, and most broad coverage
+  * Particularly useful for category-specific news (business, politics, sports, technology, etc.)
+  * Supports multiple languages and can filter by category
+  * Use when you need latest news with good source attribution
 * ${googleNewsSearch.name}:
   * Used for general news query intent like "Weekly business update", "Crypto news today", "Sport in Barcelona", use ${googleNewsSearch.name} 
   * try to translate the intend into the language determined by ${determineLanguage.name} as "query", and set "searchLanguage" and "country" properly for ${googleNewsSearch.name} 
   * Make the query short and concise, remove redundent words like "news"
   * If the result is not good, try search again with less specific query, and remove "searchLanguage" from the query.
-* ${newsDataSearch.name}:
-  * Specialized for recent news articles with excellent coverage and categorization
-  * Particularly useful for category-specific news (business, politics, sports, technology, etc.)
-  * Supports multiple languages and can filter by category
-  * Use when you need latest news with good source attribution
+## Important notes on News Search:
+* If any of the search tool returns bad / irrelevant results, try to use the other tools to find the most relevant results
+* Try multiple iterations with different search queries, to diversify the search results. You can repeat this several times until you gather enough information
+* Today is year ${(new Date()).getFullYear()}, after searching for news, you need to check if the news is up to date.
+
+## General Search Tools
 * ${braveSearch.name}:
   * to search for specific query, specific news or events.
   * try to translate the intend into the language determined by ${determineLanguage.name} as input query in ${braveSearch.name} 
-* 
-* Try multiple iterations with different search queries, to diversify the search results and find the most relevant ones
-* use ${searchWikipedia.name} when you need knowledge on topics that's less time sensitive, but proof and truth is more important.
-
-IMPORTANT: This year is ${(new Date()).getFullYear()}, after searching for news, you need to check if the news is up to date.
+* ${searchWikipedia.name}:
+  * to search for specific query, specific news or events, when you need knowledge on topics that's less time sensitive, but proof and truth is more important.
+  
 
 On the Analysis step:
 Your objective is to provide a comprehensive and fair summary of the news, with proper citations.
