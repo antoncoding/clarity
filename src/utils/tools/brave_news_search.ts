@@ -1,6 +1,7 @@
 import { getEnvironmentVariable } from "@langchain/core/utils/env";
 import { StructuredTool } from "@langchain/core/tools";
 import { z } from "zod";
+import { ToolName } from "../toolNames";
 
 /**
  * Array of valid search language codes supported by Brave News Search API.
@@ -44,7 +45,7 @@ export class BraveNewsSearch extends StructuredTool {
     return "BraveNewsSearch";
   }
 
-  name = "brave-news-search";
+  name = ToolName.BRAVE_NEWS_SEARCH;
   
   description = "Search for news articles using Brave News Search API";
 

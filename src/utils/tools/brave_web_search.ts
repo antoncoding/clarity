@@ -1,6 +1,7 @@
 import { getEnvironmentVariable } from "@langchain/core/utils/env";
 import { StructuredTool } from "@langchain/core/tools";
 import { z } from "zod";
+import { ToolName } from "../toolNames";
 
 /**
  * Interface for the parameters required to instantiate a BraveSearch
@@ -21,7 +22,7 @@ export class BraveSearch extends StructuredTool {
     return "BraveSearch";
   }
 
-  name = "brave-web-search";
+  name = ToolName.BRAVE_WEB_SEARCH;
 
   description =
     "a search engine. useful for when you need to answer questions about current events. input should be a search query.";

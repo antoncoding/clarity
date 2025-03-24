@@ -2,7 +2,7 @@ import { ChatAnthropic } from "@langchain/anthropic";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
-
+import { ToolName } from "../toolNames";
 
 const model = new ChatAnthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -37,7 +37,7 @@ export const determineLanguage = tool(async ({ userMessage }) => {
   };
   
 }, {
-  name: "determine_search_language",
+  name: ToolName.DETERMINE_LANGUAGE,
   description: "Determine the most useful search language for the query and intent",
   schema: z.object({
     userMessage: z.string().describe("User message"),

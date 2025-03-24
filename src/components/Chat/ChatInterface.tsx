@@ -30,7 +30,7 @@ interface ChatInterfaceProps {
 const UserMessage = ({ content }: MessageProps) => (
   <div className="flex justify-end mb-2 sm:mb-4 animate-message">
     <div className="p-2 sm:p-3 rounded-lg max-w-[85%] sm:max-w-[80%] bg-primary-50 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300 animate-message-content">
-      <div className="prose dark:prose-invert max-w-none font-light text-sm sm:text-base">
+      <div className="prose dark:prose-invert max-w-none text-xs sm:text-sm">
         <MarkdownContent content={content} />
       </div>
     </div>
@@ -43,24 +43,25 @@ const AIMessage = ({ content, isProcessing, metadata, message_type }: MessagePro
       {isProcessing ? (
         <div className="flex items-center">
           <BounceLoader color="#0047AB" size={20} />
-          <span className="ml-2 text-sm">Thinking...</span>
+          <span className="ml-2 text-xs">Thinking...</span>
         </div>
       ) : (
         <div className={`prose dark:prose-invert max-w-none ${
           message_type === "tool_result"
-            ? "text-gray-500 dark:text-gray-400 text-xs sm:text-sm font-light"
+            ? "text-gray-500 dark:text-gray-400 text-xs font-light"
             : message_type === "tool_call"
             ? "font-normal"
-            : "font-light text-sm sm:text-base"
+            : "text-xs sm:text-sm font-light"
         }`}>
           {message_type === "tool_result" ? (
             <ToolResult 
               content={content}
-              metadata={metadata}
+              metadata={metadata || {}}
             />
           ) : message_type === "tool_call" ? (
             <ToolCall
               content={content}
+              metadata={metadata || {}}
             />
           ) : (
             <MarkdownContent content={content} />

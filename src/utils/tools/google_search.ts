@@ -1,7 +1,7 @@
 import { getEnvironmentVariable } from "@langchain/core/utils/env";
 import { StructuredTool } from "@langchain/core/tools";
 import { z } from "zod";
-
+import { ToolName } from "../toolNames";
 /**
  * Interface for the parameters required to instantiate a GoogleSearch
  * instance.
@@ -20,7 +20,7 @@ export class GoogleSearch extends StructuredTool {
     return "GoogleSearch";
   }
 
-  name = "google-search";
+  name = ToolName.GOOGLE_SEARCH;
   
   description = "Search for information and news using Google Search Engine";
 

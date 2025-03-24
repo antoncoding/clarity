@@ -1,30 +1,112 @@
-interface ToolCallProps {
-  content: string;
+import { ToolName, ToolArgs, ToolCallInfo, ToolCallMetadata } from '@/utils/toolNames';
+
+// Simplified enum with only canonical tool types
+export enum ToolType {
+  GOOGLE_SEARCH = 'google-search',
+  BRAVE_WEB_SEARCH = 'brave-web-search',
+  BRAVE_NEWS_SEARCH = 'brave-news-search',
+  NEWSDATA_SEARCH = 'newsdata-search',
+  DUCKDUCKGO_SEARCH = 'duckduckgo-search',
+  DETERMINE_LANGUAGE = 'determine-language'
 }
 
-export function ToolCall({ content }: ToolCallProps) {
-  // Parse the content to get tool details
-  interface ToolUse {
-    type: string;
-    id: string;
-    name: string;
-    input: {
-      query?: string;
-      text?: string;
-      category?: string;
-      searchLanguage?: string;
-      countryCode?: string;
-      freshness?: string;
-      lr?: string; // language restriction for Google search
-      num?: number; // number of results for Google search
-      [key: string]: any;
-    };
+interface ToolUse {
+  type: string;
+  id: string;
+  name: string;
+  input: ToolArgs;
+}
+
+interface ToolCallProps {
+  content: string;
+  metadata?: ToolCallMetadata;
+}
+
+// Helper function to format tool call display text
+function formatToolCallDisplay(toolName: string, toolInput: ToolArgs): string {
+  switch (toolName) {
+    case ToolName.GOOGLE_SEARCH: {
+      let additionalInfo = '';
+      if (toolInput.lr) {
+        // Extract language from language restriction code (e.g., 'lang_es' → 'Spanish')
+        const langCode = toolInput.lr.replace('lang_', '');
+        additionalInfo = ` in ${langCode}`;
+      }
+      return `🔍 Searching Google for: "${toolInput.query || 'unknown query'}"${additionalInfo}`;
+    }
+    
+    case ToolName.BRAVE_WEB_SEARCH:
+      return `🔍 Searching Brave for: "${toolInput.query || 'unknown query'}"`;
+    
+    case ToolName.BRAVE_NEWS_SEARCH: {
+      let additionalInfo = '';
+      if (toolInput.countryCode) {
+        additionalInfo += ` in ${toolInput.countryCode}`;
+      }
+      if (toolInput.searchLanguage) {
+        additionalInfo += ` (${toolInput.searchLanguage})`;
+      }
+      return `📰 Searching Brave News for: "${toolInput.query || 'unknown query'}"${additionalInfo}`;
+    }
+    
+    case ToolName.NEWSDATA_SEARCH: {
+      const additionalInfo = toolInput.category ? ` in ${toolInput.category} category` : '';
+      return `📰 Searching News for: "${toolInput.query || 'unknown query'}"${additionalInfo}`;
+    }
+    
+    case ToolName.DUCKDUCKGO:
+      return `🔍 Searching DuckDuckGo for: "${toolInput.query || 'unknown query'}"`;
+    
+    case ToolName.DETERMINE_LANGUAGE: {
+      const textPreview = toolInput.userMessage || toolInput.text || '';
+      return `🌐 Detecting language for: "${textPreview.substring(0, 50)}${textPreview.length > 50 ? '...' : ''}"`;
+    }
+    
+    case ToolName.SEARCH:
+      return `🔍 Performing search for: "${toolInput.query || 'unknown query'}"`;
+    
+    default:
+      // For unknown tools, show a generic message with the tool name
+      return `Using ${toolName} tool`;
+  }
+}
+
+export function ToolCall({ content, metadata }: ToolCallProps) {
+  // First check if we have tool_calls in metadata
+  const metadataToolCalls = metadata?.tool_calls as ToolCallInfo[] | undefined;
+  
+  // If we have metadata tool calls, use those instead of parsing content
+  if (metadataToolCalls && metadataToolCalls.length > 0) {
+    const toolCall = metadataToolCalls[0]; // Use first tool call for now
+    const toolName = toolCall.name;
+    const toolArgs = toolCall.args;
+    
+    const displayText = formatToolCallDisplay(toolName, toolArgs);
+    
+    return (
+      <div>
+        {/* Display the message content if it exists */}
+        {content && (
+          <div className="prose dark:prose-invert max-w-none text-xs sm:text-sm">
+            <div dangerouslySetInnerHTML={{ __html: content }} />
+          </div>
+        )}
+        
+        {/* Display the formatted tool call */}
+        <div className="text-xs font-medium text-primary-600 dark:text-primary-400 mt-1 flex items-center">
+          <span className="inline-flex items-center rounded-md bg-primary-50 dark:bg-primary-900/30 px-2 py-1 text-xs font-medium ring-1 ring-inset ring-primary-600/20 dark:ring-primary-500/30">
+            {displayText}
+          </span>
+        </div>
+      </div>
+    );
   }
   
+  // Fall back to content parsing if no metadata tool calls
   let toolUses: ToolUse[] = [];
   let parsedContent: any = null;
   
-  // First, safely verify and parse the content
+  // Safely verify and parse the content
   try {
     // Handle the case when content is undefined or null
     if (!content) {
@@ -38,8 +120,7 @@ export function ToolCall({ content }: ToolCallProps) {
       // Check if it's a valid JSON string before parsing
       try {
         parsedContent = JSON.parse(content);
-      } catch (parseError) {
-        console.error("Failed to parse tool call JSON:", parseError);
+      } catch {
         return <pre className="text-gray-600 dark:text-gray-400 text-xs whitespace-pre-wrap font-zen">{content}</pre>;
       }
     }
@@ -59,7 +140,7 @@ export function ToolCall({ content }: ToolCallProps) {
   }
 
   if (toolUses.length === 0) {
-    return <pre className="text-gray-600 dark:text-gray-400 text-xs whitespace-pre-wrap font-zen text-sm">{content}</pre>;
+    return <pre className="text-gray-600 dark:text-gray-400 text-xs whitespace-pre-wrap font-zen">{content}</pre>;
   }
 
   // Use the first tool use in the array
@@ -67,75 +148,14 @@ export function ToolCall({ content }: ToolCallProps) {
   const toolName = toolUse.name || 'unknown';
   const toolInput = toolUse.input || {};
 
-  // Format different tool calls appropriately
-  let displayText = '';
-  
-  switch (toolName) {
-    case 'google-search':
-    case 'google_search': {
-      let additionalInfo = '';
-      if (toolInput.lr) {
-        // Extract language from language restriction code (e.g., 'lang_es' → 'Spanish')
-        const langCode = toolInput.lr.replace('lang_', '');
-        const languages: Record<string, string> = {
-          'es': 'Spanish',
-          'en': 'English',
-          'fr': 'French',
-          'de': 'German',
-          'it': 'Italian',
-          'pt': 'Portuguese',
-          'zh-CN': 'Chinese (Simplified)',
-          'ja': 'Japanese',
-          'ko': 'Korean',
-          'ru': 'Russian'
-        };
-        additionalInfo = ` in ${languages[langCode] || langCode}`;
-      }
-      displayText = `🔍 Searching Google for: "${toolInput.query || 'unknown query'}"${additionalInfo}`;
-      break;
-    }
-    case 'brave-web-search':
-    case 'brave_web_search':
-    case 'brave-search':
-    case 'brave_search':
-      displayText = `🔍 Searching Brave for: "${toolInput.query || 'unknown query'}"`;
-      break;
-    case 'brave-news-search':
-    case 'brave_news_search': {
-      let additionalInfo = '';
-      if (toolInput.countryCode) {
-        additionalInfo += ` in ${toolInput.countryCode}`;
-      }
-      if (toolInput.searchLanguage) {
-        additionalInfo += ` (${toolInput.searchLanguage})`;
-      }
-      displayText = `📰 Searching Brave News for: "${toolInput.query || 'unknown query'}"${additionalInfo}`;
-      break;
-    }
-    case 'newsdata-search':
-    case 'newsdata_search': {
-      const additionalInfo = toolInput.category ? ` in ${toolInput.category} category` : '';
-      displayText = `📰 Searching News for: "${toolInput.query || 'unknown query'}"${additionalInfo}`;
-      break;
-    }
-    case 'duckduckgo-search':
-    case 'duckduckgo_search':
-    case 'duckduckgo':
-      displayText = `🔍 Searching DuckDuckGo for: "${toolInput.query || 'unknown query'}"`;
-      break;
-    case 'determine-language':
-    case 'determine_language':
-      const textPreview = toolInput.text || '';
-      displayText = `🌐 Detecting language of: "${textPreview.substring(0, 50)}${textPreview.length > 50 ? '...' : ''}"`;
-      break;
-    default:
-      // For unknown tools, show a generic message with the tool name
-      displayText = `Using ${toolName} tool`;
-  }
+  // Format the tool call for display
+  const displayText = formatToolCallDisplay(toolName, toolInput);
 
   return (
-    <div className="text-gray-800 dark:text-gray-200 text-xs font-normal">
-      {displayText}
+    <div className="text-xs font-medium text-primary-600 dark:text-primary-400 flex items-center">
+      <span className="inline-flex items-center rounded-md bg-primary-50 dark:bg-primary-900/30 px-2 py-1 text-xs font-medium ring-1 ring-inset ring-primary-600/20 dark:ring-primary-500/30">
+        {displayText}
+      </span>
     </div>
   );
 } 

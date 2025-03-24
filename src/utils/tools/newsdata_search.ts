@@ -1,7 +1,7 @@
 import { getEnvironmentVariable } from "@langchain/core/utils/env";
 import { StructuredTool } from "@langchain/core/tools";
 import { z } from "zod";
-
+import { ToolName } from "../toolNames";
 /**
  * Array of valid categories supported by NewsData.io API.
  */
@@ -47,7 +47,7 @@ export class NewsDataSearch extends StructuredTool {
     return "NewsDataSearch";
   }
 
-  name = "newsdata-search";
+  name = ToolName.NEWSDATA_SEARCH;
   
   description = "Search for recent news articles using NewsData.io API";
 

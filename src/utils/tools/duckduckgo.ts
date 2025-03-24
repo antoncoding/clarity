@@ -2,7 +2,7 @@ import { ToolParams } from "@langchain/core/tools";
 import { StructuredTool } from "@langchain/core/tools";
 import * as duckDuckScrape from "duck-duck-scrape";
 import { z } from "zod";
-
+import { ToolName } from "../toolNames";
 // Re-export types from duck-duck-scrape
 export type { SearchOptions } from "duck-duck-scrape";
 export { SafeSearchType, SearchTimeType } from "duck-duck-scrape";
@@ -43,7 +43,7 @@ export class CustomDuckDuckGoSearch extends StructuredTool {
     return "DuckDuckGoSearch";
   }
 
-  name = "duckduckgo-search";
+  name = ToolName.DUCKDUCKGO;
 
   description =
     "A search engine. Useful for when you need to answer questions about current events. Input should be a search query.";

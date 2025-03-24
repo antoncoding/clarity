@@ -1,22 +1,41 @@
-import { AGENT_MESSAGES, processAgentResponse, extractMessageContent } from "./utils";
 import { agent } from "./llm";
-// import { supervisor } from "./supervisor";
-import { AIMessage, HumanMessage, ToolMessage } from "@langchain/core/messages";
 import { AgentDBService } from "./db";
-import { createAdminClient } from "../supabase/admin";
 
 // Re-export for backward compatibility
 export { AGENT_MESSAGES } from "./utils";
 
+// Define enums for better type safety
+export enum MessageType {
+  MESSAGE = 'message',
+  TOOL_CALL = 'tool_call',
+  TOOL_RESULT = 'tool_result',
+  THOUGHT = 'thought'
+}
+
+export enum SenderType {
+  USER = 'user',
+  AGENT = 'agent'
+}
+
+export enum EventType {
+  ON_CHAT_MODEL_END = 'on_chat_model_end',
+  ON_TOOL_END = 'on_tool_end'
+}
+
+export enum MessageStatus {
+  COMPLETED = 'completed',
+  RESPONDED = 'responded'
+}
+
 export type RawMessage = {
   id: string[] | string,
   kwargs: {
-    content: string | string[] | Array<{type: string, text?: string, id?: string, name?: string, input?: any}>,
-    additional_kwargs?: any,
-    response_metadata?: any,
-    tool_calls?: Array<{name: string, args?: any, arguments?: string, id: string, type?: string}>,
+    content: string | string[] | Array<ContentItem>,
+    additional_kwargs?: Record<string, unknown>,
+    response_metadata?: Record<string, unknown>,
+    tool_calls?: Array<ToolCall>,
     tool_call_id?: string,
-    usage_metadata?: any,
+    usage_metadata?: Record<string, unknown>,
     name?: string,
     id?: string,
     invalid_tool_calls?: Array<string>
@@ -25,32 +44,214 @@ export type RawMessage = {
   type: string,
 }
 
-/**
- * Format conversation history into prompt-friendly format
- */
-function formatMessagesForAgent(messages: Array<{
+export type ToolCall = {
+  id: string;
+  name: string;
+  args: Record<string, unknown>;
+  arguments?: string;
+  type?: string;
+}
+
+export interface TextContentItem {
+  type: 'text';
+  text: string;
+}
+
+export interface ToolUseContentItem {
+  type: 'tool_use';
+  id: string;
+  name: string;
+  input: string | Record<string, unknown>;
+}
+
+export type ContentItem = TextContentItem | ToolUseContentItem;
+
+export interface ModelOutput {
+  content?: string | ContentItem[] | null;
+  tool_calls?: ToolCall[];
+  usage_metadata?: Record<string, unknown>;
+}
+
+export interface ToolOutput {
+  content?: string | Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export interface ConversationMessage {
   sender: string;
   content: string;
   message_type?: string;
-}>) {
+}
+
+/**
+ * Format conversation history into prompt-friendly format
+ */
+function formatMessagesForAgent(messages: ConversationMessage[]) {
 
   // We want to
   // 1. Remove all tool_call type, (intermediate messages like "Let me think about this")
   // 2. Remove all tool results that were too old
-  const filteredMessages = messages.filter(msg => msg.message_type !== "tool_call")
+  const filteredMessages = messages.filter(msg => msg.message_type !== MessageType.TOOL_CALL)
 
   // Remove tool_result that not the last 8 messages
   const LOOKBACK = 8;
   const length = filteredMessages.length;
   const relevantMessages = filteredMessages
     .filter((msg, idx) => {
-      return msg.message_type !== "tool_result" || idx >= length - LOOKBACK
+      return msg.message_type !== MessageType.TOOL_RESULT || idx >= length - LOOKBACK
     })
 
   return relevantMessages.map(msg => ({
-    role: msg.sender === "user" ? "user" : "assistant",
+    role: msg.sender === SenderType.USER ? "user" : "assistant",
     content: msg.content
   }));
+}
+
+/**
+ * Extract content from raw model output
+ */
+function extractContentFromOutput(output: ModelOutput | null | undefined): { 
+  finalContent: string; 
+  toolCalls: ToolCall[] | null; 
+  messageType: MessageType 
+} {
+  let finalContent = "";
+  let toolCalls: ToolCall[] | null = null;
+  let messageType = MessageType.THOUGHT;
+  
+  if (!output || !output.content) {
+    return { finalContent, toolCalls, messageType };
+  }
+  
+  const rawContent = output.content;
+  console.log(`💬 Raw content type: ${typeof rawContent}`);
+  
+  // Handle string content (possibly JSON)
+  if (typeof rawContent === 'string') {
+    if (rawContent.trim().startsWith('[') && rawContent.trim().endsWith(']')) {
+      try {
+        console.log(`💬 Detected JSON array in string, parsing...`);
+        const parsedContent = JSON.parse(rawContent);
+        
+        if (Array.isArray(parsedContent)) {
+          const result = extractContentFromArray(parsedContent as ContentItem[]);
+          finalContent = result.finalContent;
+          toolCalls = result.toolCalls;
+        } else {
+          finalContent = rawContent;
+        }
+      } catch (e) {
+        console.log(`💬 Error parsing JSON: ${e}, using raw content`);
+        finalContent = rawContent;
+      }
+    } else {
+      finalContent = rawContent;
+    }
+    
+    messageType = toolCalls && toolCalls.length > 0 ? MessageType.TOOL_CALL : MessageType.MESSAGE;
+  }
+  // Handle array content directly
+  else if (Array.isArray(rawContent)) {
+    console.log(`💬 Content is direct array with ${rawContent.length} items`);
+    const result = extractContentFromArray(rawContent as ContentItem[]);
+    finalContent = result.finalContent;
+    toolCalls = result.toolCalls;
+    messageType = toolCalls && toolCalls.length > 0 ? MessageType.TOOL_CALL : MessageType.MESSAGE;
+  }
+  // Handle object with text property
+  else if (typeof rawContent === 'object' && rawContent !== null && 'text' in rawContent) {
+    finalContent = (rawContent as TextContentItem).text;
+    messageType = MessageType.MESSAGE;
+  }
+  // Unknown structure, try to stringify
+  else if (rawContent) {
+    try {
+      finalContent = JSON.stringify(rawContent);
+    } catch {
+      finalContent = "Error: Could not extract content";
+    }
+    messageType = MessageType.MESSAGE;
+  }
+  
+  // Check for tool calls in the output directly
+  if (!toolCalls && output.tool_calls && Array.isArray(output.tool_calls)) {
+    toolCalls = output.tool_calls;
+    messageType = MessageType.TOOL_CALL;
+    console.log(`🔧 Found tool calls directly in tool_calls`);
+  }
+  
+  return { finalContent, toolCalls, messageType };
+}
+
+/**
+ * Extract content and tool calls from array format
+ */
+function extractContentFromArray(contentArray: ContentItem[]): {
+  finalContent: string;
+  toolCalls: ToolCall[] | null;
+} {
+  const textParts: string[] = [];
+  let toolCalls: ToolCall[] | null = null;
+  
+  for (const item of contentArray) {
+    if (item.type === 'text' && 'text' in item) {
+      textParts.push(item.text);
+    } else if (item.type === 'tool_use' && 'id' in item && 'name' in item) {
+      if (!toolCalls) toolCalls = [];
+      
+      try {
+        toolCalls.push({
+          id: item.id,
+          name: item.name,
+          type: item.type,
+          args: typeof item.input === 'string' ? JSON.parse(item.input) : item.input as Record<string, unknown>
+        });
+      } catch {
+        toolCalls.push({ 
+          id: item.id, 
+          name: item.name, 
+          args: item.input as unknown as Record<string, unknown>, 
+          type: item.type 
+        });
+      }
+    }
+  }
+  
+  const finalContent = textParts.length > 0 ? textParts.join('\n') : "";
+  if (finalContent) {
+    console.log(`💬 Extracted text content: "${finalContent.substring(0, 100)}${finalContent.length > 100 ? '...' : ''}"`)
+  }
+  
+  return { finalContent, toolCalls };
+}
+
+/**
+ * Extract tool content from tool output
+ */
+function extractToolContent(output: ToolOutput | null | undefined): string {
+  let toolContent = "";
+  
+  if (!output) {
+    return toolContent;
+  }
+  
+  if (typeof output === 'string') {
+    toolContent = output;
+  } else if (typeof output === 'object' && output !== null) {
+    if (output.content) {
+      toolContent = typeof output.content === 'string' 
+        ? output.content 
+        : JSON.stringify(output.content);
+    } else {
+      try {
+        toolContent = JSON.stringify(output);
+      } catch {
+        toolContent = `[Complex tool output]`;
+      }
+    }
+  }
+  
+  return toolContent;
 }
 
 /**
@@ -86,143 +287,13 @@ export const processMessage = async (
 
     try {
       for await (const event of eventStream) {
-        // Log only event type and essential info
-        
         // Handle chat model completion
-        if (event.event === "on_chat_model_end") {
+        if (event.event === EventType.ON_CHAT_MODEL_END) {
           console.log(`💬 Chat model completed`);
           
-          // Extract content directly from the output
-          let finalContent = "";
-          let toolCalls: Array<{id: string, name: string, args: any, type?: string}> | null = null;
-          let usageMetadata = null;
-          let messageType = 'thought';
-          
-          // Extract usage metadata if available
-          if (event.data?.output?.usage_metadata) {
-            usageMetadata = event.data.output.usage_metadata;
-            console.log(`💬 Found usage metadata!`);
-          }
-          
-          if (event.data?.output?.content) {
-            const rawContent = event.data.output.content;
-            console.log(`💬 Raw content type: ${typeof rawContent}`);
-            
-            // Handle different content types
-            if (typeof rawContent === 'string') {
-              // Check if the string is actually a JSON array
-              if (rawContent.trim().startsWith('[') && rawContent.trim().endsWith(']')) {
-                try {
-                  console.log(`💬 Detected JSON array in string, parsing...`);
-                  const parsedContent = JSON.parse(rawContent);
-                  
-                  if (Array.isArray(parsedContent)) {
-                    const textParts = [];
-                    
-                    for (const item of parsedContent) {
-                      if (item.type === 'text' && item.text) {
-                        textParts.push(item.text);
-                      } else if (item.type === 'tool_use') {
-                        if (!toolCalls) toolCalls = [];
-                        
-                        try {
-                          toolCalls.push({
-                            id: item.id,
-                            name: item.name,
-                            type: item.type,
-                            args: typeof item.input === 'string' ? JSON.parse(item.input) : item.input
-                          });
-                        } catch (e) {
-                          toolCalls.push({ id: item.id, name: item.name, args: item.input, type: item.type });
-                        }
-                      }
-                    }
-                    
-                    if (textParts.length > 0) {
-                      finalContent = textParts.join('\n');
-                      console.log(`💬 Extracted text content: "${finalContent.substring(0, 100)}${finalContent.length > 100 ? '...' : ''}"`)
-                    }
-                  } else {
-                    // Not an array after parsing, use as is
-                    finalContent = rawContent;
-                  }
-                } catch (e) {
-                  console.log(`💬 Error parsing JSON: ${e}, using raw content`);
-                  finalContent = rawContent;
-                }
-              } else {
-                // Not JSON, use as is
-                finalContent = rawContent;
-              }
-              
-              messageType = toolCalls && toolCalls.length > 0 ? 'tool_call' : 'message';
-            }
-            // Handle array content directly
-            else if (Array.isArray(rawContent)) {
-              console.log(`💬 Content is direct array with ${rawContent.length} items`);
-              
-              // Extract text parts and tool calls
-              const textParts = [];
-              
-              for (const item of rawContent) {
-                if (item.type === 'text' && item.text) {
-                  textParts.push(item.text);
-                } else if (item.type === 'tool_use') {
-                  if (!toolCalls) toolCalls = [];
-                  
-                  try {
-                    toolCalls.push({
-                      id: item.id,
-                      name: item.name,
-                      type: item.type,
-                      args: typeof item.input === 'string' ? JSON.parse(item.input) : item.input
-                    });
-                  } catch (e) {
-                    toolCalls.push({ id: item.id, name: item.name, args: item.input, type: item.type });
-                  }
-                }
-              }
-              
-              // Join text parts
-              if (textParts.length > 0) {
-                finalContent = textParts.join('\n');
-                console.log(`💬 Extracted text content: "${finalContent.substring(0, 100)}${finalContent.length > 100 ? '...' : ''}"`)
-              }
-              
-              // Set message type based on tool calls
-              messageType = toolCalls && toolCalls.length > 0 ? 'tool_call' : 'message';
-            }
-            // If it's an object with text property, use that
-            else if (typeof rawContent === 'object' && rawContent !== null && rawContent.text) {
-              finalContent = rawContent.text;
-              messageType = 'message';
-            }
-            // Unknown structure, try to stringify
-            else if (rawContent) {
-              try {
-                finalContent = JSON.stringify(rawContent);
-              } catch (e) {
-                finalContent = "Error: Could not extract content";
-              }
-              messageType = 'message';
-            }
-          } else if (event.data?.output?.content) {
-            // Alternative path for content
-            const outputContent = event.data.output.content;
-              try {
-                finalContent = JSON.stringify(outputContent);
-              } catch (e) {
-                finalContent = outputContent;
-              }
-            messageType = 'message';
-          }
-          
-          // Check for tool calls in the output directly
-          if (!toolCalls && event.data?.output?.tool_calls && Array.isArray(event.data.output.tool_calls)) {
-            toolCalls = event.data.output.tool_calls;
-            messageType = 'tool_call';
-            console.log(`🔧 Found tool calls directly in tool_calls`);
-          }
+          // Extract content from output
+          const { finalContent, toolCalls, messageType } = extractContentFromOutput(event.data?.output as ModelOutput);
+          const usageMetadata = event.data?.output?.usage_metadata || null;
           
           // Log tool calls count if any
           if (toolCalls) {
@@ -239,7 +310,7 @@ export const processMessage = async (
           // Save to database
           try {
             // Prepare metadata with both tool calls and usage metadata
-            const metadata: Record<string, any> = {};
+            const metadata: Record<string, unknown> = {};
             
             if (toolCalls && toolCalls.length > 0) {
               metadata.tool_calls = toolCalls;
@@ -249,8 +320,8 @@ export const processMessage = async (
               metadata.usage_metadata = usageMetadata;
             }
             
-            let metadataInfo = [];
-            if (metadata.tool_calls) metadataInfo.push(`${metadata.tool_calls.length} tool_calls`);
+            const metadataInfo = [];
+            if (metadata.tool_calls) metadataInfo.push(`${(metadata.tool_calls as ToolCall[]).length} tool_calls`);
             if (metadata.usage_metadata) metadataInfo.push('usage_metadata');
             
             console.log(`💾 Saving ${messageType} message with metadata: ${metadataInfo.length > 0 ? metadataInfo.join(', ') : 'none'}`);
@@ -258,15 +329,15 @@ export const processMessage = async (
             await dbService.insertAgentMessage({
               conversation_id: conversationId,
               content: finalContent.trim(),
-              sender: "agent",
-              status: "completed",
+              sender: SenderType.AGENT,
+              status: MessageStatus.COMPLETED,
               message_type: messageType,
               metadata: metadata
             });
             
             // Update user message status for message types
             if (newUserMessageId && !userMessageUpdated) {
-              await dbService.updateMessageStatus(newUserMessageId, "responded");
+              await dbService.updateMessageStatus(newUserMessageId, MessageStatus.RESPONDED);
               userMessageUpdated = true;
             }
           } catch (error) {
@@ -275,44 +346,12 @@ export const processMessage = async (
         }
         
         // Handle tool completion
-        else if (event.event === "on_tool_end") {
+        else if (event.event === EventType.ON_TOOL_END) {
           const toolName = event.name || 'unknown_tool';
           const toolCallId = event.run_id;
           
-          // Log tool output type info
-          if (event.data?.output) {
-            console.log(`🔧 Tool output type: ${typeof event.data.output}`);
-            if (typeof event.data.output === 'object' && event.data.output !== null) {
-              console.log(`🔧 Tool output keys: ${Object.keys(event.data.output).join(', ')}`);
-              if (event.data.output.constructor) {
-                console.log(`🔧 Tool output constructor: ${event.data.output.constructor.name}`);
-              }
-            }
-          }
-          
           // Extract tool content
-          let toolContent = "";
-          if (event.data?.output) {
-            if (typeof event.data.output === 'string') {
-              toolContent = event.data.output;
-            } else if (typeof event.data.output === 'object' && event.data.output !== null) {
-              if (event.data.output.content) {
-                toolContent = typeof event.data.output.content === 'string' 
-                  ? event.data.output.content 
-                  : JSON.stringify(event.data.output.content);
-              } else if (event.data.output.content) {
-                toolContent = typeof event.data.output.content === 'string' 
-                  ? event.data.output.content 
-                  : JSON.stringify(event.data.output.content);
-              } else {
-                try {
-                  toolContent = JSON.stringify(event.data.output);
-                } catch (e) {
-                  toolContent = `[Complex tool output]`;
-                }
-              }
-            }
-          }
+          const toolContent = extractToolContent(event.data?.output as ToolOutput);
           
           console.log(`🔧 Tool completed: ${toolName}, output type: ${typeof toolContent}`);
           
@@ -324,9 +363,9 @@ export const processMessage = async (
               await dbService.insertAgentMessage({
                 conversation_id: conversationId,
                 content: toolContent.trim(),
-                sender: "agent",
-                status: "completed",
-                message_type: "tool_result",
+                sender: SenderType.AGENT,
+                status: MessageStatus.COMPLETED,
+                message_type: MessageType.TOOL_RESULT,
                 metadata: {
                   tool_name: toolName,
                   tool_call_id: toolCallId
