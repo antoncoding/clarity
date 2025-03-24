@@ -8,8 +8,8 @@ import { usePathname } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { MenuItem } from "./menu-item";
 import { useConversation } from "@/context/conversation-context";
-import { BounceLoader } from "react-spinners";
-import { CirclePlus, TrashIcon } from "lucide-react";
+import { SyncLoader } from "react-spinners";
+import { CirclePlus, TrashIcon, List, ListEnd } from "lucide-react";
 import { ConversationItem } from "./conversation-item";
 
 // Define conversation type
@@ -34,6 +34,7 @@ export function ConversationsList({
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isListCollapsed, setIsListCollapsed] = useState(false);
   const supabase = createClient();
   const pathname = usePathname();
   const router = useRouter();
@@ -169,77 +170,114 @@ export function ConversationsList({
     router.push('/news');
   };
 
+  // Get active conversation
+  const activeConversation = conversations.find(c => `/news/${c.id}` === activePath);
+
   if (isLoading && conversations.length === 0) {
-    return <div className="px-2 py-1 text-xs text-gray-500"><BounceLoader color="#0047AB" size={24} /></div>;
+    return <div className="px-2 py-1 text-xs text-gray-500 flex justify-center items-center">
+      <SyncLoader color="#0047AB" className="py-2" size={8} />
+    </div>;
   }
 
   return (
     <>
-      <ul className="space-y-1 mt-2 pl-3">
-        {/* New Chat option */}
-        <li>
+      <ul className="space-y-1 mt-2 pl-3 max-h-[300px] overflow-y-scroll transition-all duration-300 ease-in-out
+        scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-800 
+        scrollbar-track-transparent hover:scrollbar-thumb-gray-300 dark:hover:scrollbar-thumb-gray-700
+        pr-1.5 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent
+        [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-200
+        [&::-webkit-scrollbar-thumb]:dark:bg-gray-800 [&::-webkit-scrollbar-thumb]:hover:bg-gray-300
+        [&::-webkit-scrollbar-thumb]:dark:hover:bg-gray-700">
+        {/* New Chat option with Collapse button */}
+        <li className="flex items-center gap-1 sticky top-0 z-10 py-1 transition-all duration-300">
           <MenuItem
             className={cn(
-              "flex items-center gap-3 py-1 text-xs font-normal",
+              "flex-1 flex items-center gap-3 py-1 text-xs font-normal transition-all duration-300",
               !isExpanded && "justify-center px-0"
             )}
             onClick={createNewChat}
             isActive={pathname === "/"}
           >
             {isExpanded && (
-              <div className="p-1 flex items-center gap-2"> <CirclePlus className="h-4 w-4" /> <span className="text-sm">  Search</span> </div>
+              <div className="p-1 flex items-center gap-2 transition-all duration-300"> 
+                <CirclePlus className="h-4 w-4" /> 
+                <span className="text-sm">Search</span> 
+              </div>
             )}
           </MenuItem>
+
+          {/* Collapse/Expand button */}
+          {isExpanded && conversations.length > 0 && (
+            <button
+              onClick={() => setIsListCollapsed(!isListCollapsed)}
+              className={cn(
+                "p-1.5 rounded-md hover:bg-primary-50 dark:hover:bg-primary-900/30",
+                "text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-300",
+                "transition-all duration-300"
+              )}
+              aria-label={isListCollapsed ? "Show all conversations" : "Hide other conversations"}
+            >
+              {isListCollapsed ? (
+                <List className="h-4 w-4 transition-transform duration-300" />
+              ) : (
+                <ListEnd className="h-4 w-4 transition-transform duration-300" />
+              )}
+            </button>
+          )}
         </li>
 
         {/* List of existing conversations */}
-        {conversations.map((conversation) => {
-          const conversationPath = `/news/${conversation.id}`;
-          const isActive = activePath === conversationPath;
+        <div className="transition-all duration-300">
+          {(isListCollapsed ? [activeConversation].filter(Boolean) : conversations).map((conversation) => {
+            if (!conversation) return null;
+            
+            const conversationPath = `/news/${conversation.id}`;
+            const isActive = activePath === conversationPath;
 
-          return (
-            <li key={conversation.id} className="relative">
-              <ConversationItem
-                isExpanded={isExpanded}
-                isActive={isActive}
-                onClick={() => {
-                  setSelectedConversationId(conversation.id);
-                  if (onConversationClick) onConversationClick(conversation.id); // Call the callback when a conversation is clicked
-                }}
-                className="h-auto p-1 pl-4 pr-2"
-              >
-                {isExpanded ? (
-                  <div className="flex w-full items-center justify-between">
-                    <span className="truncate max-w-[120px] text-inherit" title={conversation.title || generateRandomTitle()}>
-                      {conversation.title || generateRandomTitle()}
-                    </span>
+            return (
+              <li key={conversation.id} className="relative">
+                <ConversationItem
+                  isExpanded={isExpanded}
+                  isActive={isActive}
+                  onClick={() => {
+                    setSelectedConversationId(conversation.id);
+                    if (onConversationClick) onConversationClick(conversation.id);
+                  }}
+                  className="h-auto p-1 pl-4 pr-2"
+                >
+                  {isExpanded ? (
+                    <div className="flex w-full items-center justify-between">
+                      <span className="truncate max-w-[120px] text-inherit" title={conversation.title || generateRandomTitle()}>
+                        {conversation.title || generateRandomTitle()}
+                      </span>
 
-                    {/* Delete button - always aligned right */}
-                    <button
-                      onClick={(e) => confirmDelete(conversation.id, conversation.title, e)}
-                      className="ml-auto p-2 text-gray-400 hover:text-red-500 transition-colors"
-                      aria-label="Delete conversation"
-                    >
-                      <TrashIcon className="h-3 w-3" />
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <span className="text-[10px]">#</span>
-                    {/* Small delete button for collapsed view */}
-                    <button
-                      onClick={(e) => confirmDelete(conversation.id, conversation.title, e)}
-                      className="absolute -right-1 -top-1 p-2 text-gray-400 hover:text-red-500 transition-colors"
-                      aria-label="Delete conversation"
-                    >
-                      <TrashIcon className="h-2 w-2" />
-                    </button>
-                  </>
-                )}
-              </ConversationItem>
-            </li>
-          );
-        })}
+                      {/* Delete button - always aligned right */}
+                      <button
+                        onClick={(e) => confirmDelete(conversation.id, conversation.title, e)}
+                        className="ml-auto p-2 text-gray-400 hover:text-red-500 transition-colors"
+                        aria-label="Delete conversation"
+                      >
+                        <TrashIcon className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <span className="text-[10px]">#</span>
+                      {/* Small delete button for collapsed view */}
+                      <button
+                        onClick={(e) => confirmDelete(conversation.id, conversation.title, e)}
+                        className="absolute -right-1 -top-1 p-2 text-gray-400 hover:text-red-500 transition-colors"
+                        aria-label="Delete conversation"
+                      >
+                        <TrashIcon className="h-2 w-2" />
+                      </button>
+                    </>
+                  )}
+                </ConversationItem>
+              </li>
+            );
+          })}
+        </div>
       </ul>
 
       {/* Confirmation Modal */}

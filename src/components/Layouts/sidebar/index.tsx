@@ -4,27 +4,63 @@ import { Logo } from "@/components/logo";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { NAV_DATA } from "./data";
-import { Authentication, Settings } from "./icons";
+import { useEffect, useState, ReactNode } from "react";
+import { Authentication, Settings, HomeIcon } from "./icons";
 import { MenuItem } from "./menu-item";
 import { useSidebarContext } from "./sidebar-context";
 import { createClient } from "@/utils/supabase/client";
 import { ConversationsList } from "./conversations"; 
 
-// Define the item type to fix TypeScript errors
-type NavItem = {
+// Define new component types
+type NavItemProps = {
   title: string;
   icon: React.ComponentType<{ className?: string }>;
-  url?: string;
-  items: Array<{ title: string; url: string }>;
-  showConversations?: boolean; 
+  href: string;
+  isActive: boolean;
+  onClick?: () => void;
+  subMenu?: ReactNode;
+  isSidebarExpanded: boolean;
+};
+
+// NavItem component - Main navigation item
+const NavItem = ({ 
+  title, 
+  icon: Icon, 
+  href, 
+  isActive, 
+  onClick, 
+  subMenu, 
+  isSidebarExpanded 
+}: NavItemProps) => {
+  return (
+    <li className="mb-1">
+      <MenuItem
+        className={cn(
+          "flex items-center gap-2 sm:gap-3 py-2 sm:py-3 text-xs sm:text-sm",
+          !isSidebarExpanded && "justify-center px-0"
+        )}
+        isActive={isActive}
+        onClick={onClick}
+        href={href}
+      >
+        <Icon
+          className="size-4 sm:size-5 shrink-0 text-primary-600 dark:text-primary-300"
+          aria-hidden="true"
+        />
+        {isSidebarExpanded && <span className="text-xs sm:text-sm">{title}</span>}
+      </MenuItem>
+      
+      {isSidebarExpanded && subMenu && (
+        <div className="mt-1">{subMenu}</div>
+      )}
+    </li>
+  );
 };
 
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { setIsOpen, isOpen, isMobile, toggleSidebar } = useSidebarContext();
+  const { setIsOpen, isOpen: isSidebarExpanded, isMobile, toggleSidebar } = useSidebarContext();
   const [isDarkMode, setIsDarkMode] = useState(false);
   
   useEffect(() => {
@@ -43,14 +79,14 @@ export function Sidebar() {
   };
 
   const handleSidebarClick = () => {
-    if (!isOpen && !isMobile) {
+    if (!isSidebarExpanded && !isMobile) {
       toggleSidebar();
     }
   };
 
   // Add a function to close sidebar when clicking a link on mobile
   const handleMobileLinkClick = () => {
-    if (isMobile && isOpen) {
+    if (isMobile && isSidebarExpanded) {
       setIsOpen(false);
     }
   };
@@ -61,14 +97,16 @@ export function Sidebar() {
     router.push(`/news/${conversationId}`);
     
     // Close sidebar on mobile if needed
-    if (isMobile && isOpen) {
+    if (isMobile && isSidebarExpanded) {
       setIsOpen(false);
     }
   };
 
+  const isNewsActive = pathname === "/" || pathname.startsWith('/news/');
+
   return (
     <>
-      {isMobile && isOpen && (
+      {isMobile && isSidebarExpanded && (
         <div
           className="fixed inset-0 z-40 bg-black/50 transition-opacity duration-300"
           onClick={() => setIsOpen(false)}
@@ -82,18 +120,18 @@ export function Sidebar() {
           isMobile 
             ? "fixed bottom-0 top-0 z-50 left-0" // Ensure it's positioned at left edge
             : "sticky top-0 h-screen",
-          isOpen 
-            ? "w-[250px]" 
+          isSidebarExpanded 
+            ? "w-[320px]" 
             : isMobile 
               ? "w-0" // Hide completely when closed on mobile
-              : "w-[60px] sm:w-[80px] cursor-pointer",
+              : "w-[70px] sm:w-[90px] cursor-pointer",
         )}
         aria-label="Main navigation"
-        onClick={!isOpen && !isMobile ? handleSidebarClick : undefined}
+        onClick={!isSidebarExpanded && !isMobile ? handleSidebarClick : undefined}
       >
         <div className="flex h-full flex-col py-3 sm:py-4 pl-2 sm:pl-3 pr-1 sm:pr-2">
           <div className="relative flex items-center justify-center">
-            {isOpen ? (
+            {isSidebarExpanded ? (
               <Link
                 href={"/"}
                 onClick={() => isMobile && toggleSidebar()}
@@ -107,7 +145,7 @@ export function Sidebar() {
               </div>
             )}
             
-            {isMobile && isOpen && (
+            {isMobile && isSidebarExpanded && (
               <button
                 onClick={toggleSidebar}
                 className="absolute right-0 top-0 p-1 text-gray-500"
@@ -119,7 +157,7 @@ export function Sidebar() {
               </button>
             )}
             
-            {!isMobile && isOpen && (
+            {!isMobile && isSidebarExpanded && (
               <button
                 onClick={toggleSidebar}
                 className="absolute -right-1 top-0 p-1 text-primary-500 hover:text-primary-700 dark:text-primary-300 dark:hover:text-primary-100"
@@ -133,57 +171,37 @@ export function Sidebar() {
           </div>
 
           <div className="custom-scrollbar mt-4 sm:mt-6 flex-1 overflow-y-auto pr-1 sm:pr-2">
-            {NAV_DATA.map((section) => (
-              <div key={section.label} className="mb-3 sm:mb-4">
-                {isOpen && (
-                  <h2 className="mb-1 sm:mb-2 text-xs font-medium text-primary-700 dark:text-primary-300">
-                    {section.label}
-                  </h2>
-                )}
+            {/* Main Navigation Section */}
+            <div className="mb-3 sm:mb-4">
+              {isSidebarExpanded && (
+                <h2 className="mb-1 sm:mb-2 text-xs font-medium text-primary-700 dark:text-primary-300">
+                  MAIN
+                </h2>
+              )}
 
-                <nav role="navigation" aria-label={section.label}>
-                  <ul className="space-y-1">
-                    {section.items.map((item: NavItem) => {
-                      // Update to use the item.url if provided, otherwise use the default path
-                      const href = item.url || "/" + item.title.toLowerCase().split(" ").join("-");
-                        
-                      return (
-                        <li key={item.title}>
-                          <MenuItem
-                            className={cn(
-                              "flex items-center gap-2 sm:gap-3 py-2 sm:py-3 text-xs sm:text-sm",
-                              !isOpen && "justify-center px-0"
-                            )}
-                            isActive={
-                              // Update the active state check to handle nested routes
-                              (pathname === href) || 
-                              (!!item.showConversations && pathname.startsWith('/news/'))
-                            }
-                            onClick={handleMobileLinkClick}
-                            href={href} // Add href to make it a proper link
-                          >
-                            <item.icon
-                              className="size-4 sm:size-5 shrink-0 text-primary-600 dark:text-primary-300"
-                              aria-hidden="true"
-                            />
-
-                            {isOpen && <span className="text-xs sm:text-sm">{item.title}</span>}
-                          </MenuItem>
-                          
-                          {isOpen && item.showConversations && (
-                            <ConversationsList 
-                              isExpanded={isOpen}
-                              onConversationClick={handleConversationClick} // Use the new handler
-                              activePath={pathname} // Pass the current path to highlight active conversation
-                            />
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </nav>
-              </div>
-            ))}
+              <nav role="navigation" aria-label="Main Navigation">
+                <ul className="space-y-1">
+                  {/* News Navigation Item with Submenu */}
+                  <NavItem
+                    title="News"
+                    icon={HomeIcon}
+                    href="/"
+                    isActive={isNewsActive}
+                    onClick={handleMobileLinkClick}
+                    isSidebarExpanded={isSidebarExpanded}
+                    subMenu={
+                      <ConversationsList 
+                        isExpanded={isSidebarExpanded}
+                        onConversationClick={handleConversationClick}
+                        activePath={pathname}
+                      />
+                    }
+                  />
+                  
+                  {/* Add more NavItems here as needed */}
+                </ul>
+              </nav>
+            </div>
           </div>
           
           <div className="mt-auto border-t border-gray-200 pt-2 sm:pt-3 dark:border-gray-800">
@@ -191,18 +209,18 @@ export function Sidebar() {
               href="/settings"
               className={cn(
                 "mb-1 sm:mb-2 flex w-full items-center gap-2 sm:gap-3 rounded-md px-2 sm:px-3 py-2 text-xs sm:text-sm hover:bg-primary-50 dark:hover:bg-primary-900/30",
-                !isOpen && "justify-center px-0"
+                !isSidebarExpanded && "justify-center px-0"
               )}
               onClick={handleMobileLinkClick}
             >
               <Settings className="size-4 sm:size-5 text-primary-500 dark:text-primary-300" />
-              {isOpen && <span className="text-bold text-gray-700 dark:text-gray-300">Settings</span>}
+              {isSidebarExpanded && <span className="text-bold text-gray-700 dark:text-gray-300">Settings</span>}
             </Link>
             
             <button 
               className={cn(
                 "mb-1 sm:mb-2 flex w-full items-center gap-2 sm:gap-3 rounded-md px-2 sm:px-3 py-2 text-xs sm:text-sm hover:bg-primary-50 dark:hover:bg-primary-900/30",
-                !isOpen && "justify-center px-0"
+                !isSidebarExpanded && "justify-center px-0"
               )}
               onClick={toggleDarkMode}
             >
@@ -215,25 +233,25 @@ export function Sidebar() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
                 </svg>
               )}
-              {isOpen && <span className="text-bold text-gray-700 dark:text-gray-300">{isDarkMode ? "Light Mode" : "Dark Mode"}</span>}
+              {isSidebarExpanded && <span className="text-bold text-gray-700 dark:text-gray-300">{isDarkMode ? "Light Mode" : "Dark Mode"}</span>}
             </button>
             
             <button 
               className={cn(
                 "flex w-full items-center gap-2 sm:gap-3 rounded-md px-2 sm:px-3 py-2 text-xs sm:text-sm text-accent-600 hover:bg-accent-50 dark:text-accent-300 dark:hover:bg-accent-900/30",
-                !isOpen && "justify-center px-0"
+                !isSidebarExpanded && "justify-center px-0"
               )}
               onClick={handleSignOut}
             >
               <Authentication className="size-4 sm:size-5" />
-              {isOpen && <span>Logout</span>}
+              {isSidebarExpanded && <span>Logout</span>}
             </button>
           </div>
         </div>
       </aside>
 
       {/* Mobile toggle button - visible only when sidebar is closed */}
-      {isMobile && !isOpen && (
+      {isMobile && !isSidebarExpanded && (
         <button
           onClick={toggleSidebar}
           className="fixed top-4 left-4 z-40 bg-white dark:bg-gray-800 p-2 rounded-full shadow-md"
